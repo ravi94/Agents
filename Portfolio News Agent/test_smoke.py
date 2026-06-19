@@ -22,8 +22,10 @@ logging.basicConfig(level=logging.WARNING)
 def _cfg(**over) -> Config:
     base = dict(
         ollama_base_url="http://x/v1", model_name="m", tool_mode="auto",
-        search_provider="duckduckgo", serpapi_api_key="",
-        search_min_interval=0.0, search_jitter=0.0,
+        search_provider="searxng", serpapi_api_key="",
+        searxng_url="http://localhost:8080", searxng_rate_limit_rps=1.0,
+        searxng_rate_limit_burst=3, searxng_max_retries=4,
+        searxng_backoff_base=1.0, searxng_backoff_max=30.0, searxng_timeout=15.0,
         search_cache_enabled=False, search_cache_dir=Path("."),
         max_iterations=8,
         max_tool_calls=20, run_timeout_seconds=300, fetch_char_budget=8000,
@@ -141,24 +143,41 @@ def test_search_cache_skips_empty():
     from portfolio_news_agent.tools.search.cache import SearchCache
 
     with tempfile.TemporaryDirectory() as d:
-        c = SearchCache(Path(d), "duckduckgo", enabled=True)
+        c = SearchCache(Path(d), "searxng", enabled=True)
         c.put("q", 5, [])
         assert c.get("q", 5) is None, "empty result should not be cached"
         c.put("q", 5, [{"title": "t", "url": "u", "snippet": "s"}])
         assert c.get("q", 5) is not None, "non-empty result should be cached"
 
 
-def test_duckduckgo_detects_anomaly_page():
-    """A 202 anomaly page yields [] (not a parse of garbage) without raising."""
-    from portfolio_news_agent.tools.search.duckduckgo import DuckDuckGoProvider
+def test_searxng_parses_json_results():
+    """A normal JSON payload is mapped to SearchResult(title, url, snippet)."""
+    from portfolio_news_agent.tools.search.searxng import SearxngProvider
 
-    prov = DuckDuckGoProvider(min_interval=0.0, jitter=0.0)
-    prov._warmed = True  # skip the homepage warmup network call
-    anomaly = MagicMock(status_code=202, text="... anomaly detected ...",
-                        raise_for_status=lambda: None)
-    with patch.object(prov._session, "post", return_value=anomaly):
+    prov = SearxngProvider("http://localhost:8080", rate_limit_rps=1000.0)
+    payload = {"results": [
+        {"title": "T1", "url": "https://a/1", "content": "snippet one"},
+        {"title": "T2", "url": "https://a/2", "content": "snippet two"},
+    ]}
+    resp = MagicMock(status_code=200, json=lambda: payload,
+                     raise_for_status=lambda: None)
+    with patch.object(prov._session, "request", return_value=resp):
+        results = prov.search("anything", max_results=5)
+    assert [r.url for r in results] == ["https://a/1", "https://a/2"]
+    assert results[0].title == "T1" and results[0].snippet == "snippet one"
+
+
+def test_searxng_rate_limited_yields_empty():
+    """Exhausted 429 retries => [] (not a raise) and throttled_count is bumped."""
+    from portfolio_news_agent.tools.search.searxng import SearxngProvider
+
+    prov = SearxngProvider("http://localhost:8080", rate_limit_rps=1000.0,
+                           max_retries=0, backoff_base=0.0, backoff_max=0.0)
+    resp = MagicMock(status_code=429, headers={}, raise_for_status=lambda: None)
+    with patch.object(prov._session, "request", return_value=resp):
         results = prov.search("anything")
-    assert results == [], "throttle page should yield no results"
+    assert results == [], "rate-limited search should yield no results"
+    assert prov.throttled_count == 1
 
 
 def _scripted_loop_empty_search(cfg, turns, throttled=False):

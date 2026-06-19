@@ -58,7 +58,7 @@ Module responsibilities:
 | [agent_loop.py](portfolio_news_agent/agent_loop.py) | Orchestrate the loop; guardrails; anti-hallucination guard |
 | [tools/registry.py](portfolio_news_agent/tools/registry.py) | Tool JSON schemas + `ToolDispatcher` (URL dedupe, grounding counters, never raises) |
 | [tools/web_fetch.py](portfolio_news_agent/tools/web_fetch.py) | GET URL -> trafilatura main-text extraction, truncated to a char budget |
-| [tools/search/](portfolio_news_agent/tools/search/) | Pluggable `web_search`: `SearchProvider` interface + `duckduckgo` / `serpapi` + per-day cache |
+| [tools/search/](portfolio_news_agent/tools/search/) | Pluggable `web_search`: `SearchProvider` interface + `searxng` (default, local SearXNG JSON API w/ token-bucket + retry/backoff in `_throttle.py`) / `serpapi` + per-day cache |
 | [brief.py](portfolio_news_agent/brief.py) | Render final prose -> linkified HTML + plaintext; build subject |
 | [deliver/email.py](portfolio_news_agent/deliver/email.py) | SMTP STARTTLS multipart HTML+text send |
 | [deliver/file.py](portfolio_news_agent/deliver/file.py) | Write `summary-<date>.md` to `OUTPUT_DIR` |

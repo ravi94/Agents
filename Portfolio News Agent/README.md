@@ -13,8 +13,10 @@ See [design.md](design.md) for architecture and decisions.
 - For email delivery: an SMTP account. For Gmail, create an **App Password**
   (Google Account → Security → 2-Step Verification → App passwords) and use that as
   `SMTP_PASSWORD` — your normal password will not work.
-- For `serpapi` search (optional): a [SerpAPI](https://serpapi.com) API key. The default
-  `duckduckgo` backend needs no key.
+- For the default `searxng` search backend: a locally-hosted SearXNG instance
+  (no API key). See [`../../mcp/web_search`](../../mcp/web_search) for a ready-to-run
+  Docker setup; point `SEARXNG_URL` at it (default `http://localhost:8080`).
+- For `serpapi` search (optional): a [SerpAPI](https://serpapi.com) API key.
 
 ## Setup
 
@@ -69,7 +71,11 @@ To save the brief to a file instead of emailing it, set `DELIVERY_MODE=file` in
 | `OLLAMA_BASE_URL` | Ollama OpenAI-compatible endpoint (default `http://localhost:11434/v1`) |
 | `MODEL_NAME` | Served model id (e.g. `qwen3:27b`) |
 | `TOOL_MODE` | `auto` (default), `native`, or `prompt` — see below |
-| `SEARCH_PROVIDER` | `duckduckgo` (default, no key) or `serpapi` |
+| `SEARCH_PROVIDER` | `searxng` (default, local, no key) or `serpapi` |
+| `SEARXNG_URL` | SearXNG base URL (default `http://localhost:8080`) |
+| `SEARXNG_RATE_LIMIT_RPS` / `_BURST` | Token-bucket throttle (default `1.0` / `3`) |
+| `SEARXNG_MAX_RETRIES` / `_BACKOFF_BASE` / `_BACKOFF_MAX` | Retry/backoff on 429/5xx |
+| `SEARXNG_TIMEOUT` | Per-request timeout in seconds (default `15`) |
 | `SERPAPI_API_KEY` | Required only when `SEARCH_PROVIDER=serpapi` |
 | `MAX_ITERATIONS` / `MAX_TOOL_CALLS` / `RUN_TIMEOUT_SECONDS` | Loop guardrails |
 | `FETCH_CHAR_BUDGET` | Max chars of article text fed back per fetch |
@@ -80,7 +86,11 @@ To save the brief to a file instead of emailing it, set `DELIVERY_MODE=file` in
 ### Switching search backends
 
 The agent always sees one `web_search` tool; the backend is chosen by `SEARCH_PROVIDER`.
-- **`duckduckgo`** — no key, scrapes the DuckDuckGo HTML endpoint. Best-effort.
+- **`searxng`** (default) — no key, queries a locally-hosted SearXNG JSON API (the
+  same instance the [`web_search` MCP](../../mcp/web_search) uses). Includes the MCP's
+  throttle protection: token-bucket request spacing + exponential backoff/retry on
+  429/5xx (see [`tools/search/_throttle.py`](portfolio_news_agent/tools/search/_throttle.py)).
+  Requires a running SearXNG container.
 - **`serpapi`** — Google results via API key; more reliable + better news ranking.
 
 Adding Tavily/Brave later is just a new provider file under
@@ -141,8 +151,10 @@ portfolio_news_agent/
     web_fetch.py   GET + trafilatura extraction
     search/        pluggable web_search
       __init__.py  SearchProvider interface + get_provider()
-      duckduckgo.py
+      searxng.py   local SearXNG JSON API backend (default)
+      _throttle.py token bucket + retry/backoff (ported from web_search MCP)
       serpapi.py
+      cache.py     per-day on-disk result cache
   deliver/
     email.py       SMTP multipart send
 deploy/com.portfolio.newsagent.plist   launchd job (daily pre-market)

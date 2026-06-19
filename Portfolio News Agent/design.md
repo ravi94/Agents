@@ -13,7 +13,7 @@ Reference: `Tool-Calling Agent Architecture Design Diagram _ Claude.pdf` (Design
 
 - **Language:** Python 3.11+ (uses `X | None` hints; works on 3.9 via `from __future__ import annotations`)
 - **LLM:** Qwen 3 (e.g. `qwen3:27b`), served locally via **Ollama** (OpenAI-compatible `/v1/chat/completions`)
-- **Search:** pluggable — DuckDuckGo HTML (default, no key) or SerpAPI (key-gated)
+- **Search:** pluggable — local SearXNG JSON API (default, no key) or SerpAPI (key-gated)
 - **Delivery:** Email (SMTP, multipart HTML+text)
 - **Scheduler:** `launchd` (macOS) or cron
 - **Dependencies:** `requests`, `pyyaml`, `python-dotenv`, `beautifulsoup4`, `trafilatura`, `lxml_html_clean`
@@ -55,7 +55,7 @@ the model's tool calls, not a fixed pipeline.
 | `llm_client.py` | Wrap Ollama chat API; send messages + tool schemas; parse tool calls (native + prompt fallback) |
 | `tools/registry.py` | Tool JSON schemas sent each turn; `ToolDispatcher` that executes calls (URL dedupe, never raises) |
 | `tools/web_fetch.py` | GET a URL → cleaned main text (trafilatura), truncated to a char budget |
-| `tools/search/` | Pluggable `web_search`: common interface + `duckduckgo` and `serpapi` providers |
+| `tools/search/` | Pluggable `web_search`: common interface + `searxng` (default) and `serpapi` providers + `_throttle.py` |
 | `agent_loop.py` | Orchestrate: build prompt → call LLM → dispatch tools → feed results back → stop on no tool_calls; enforce guardrails |
 | `brief.py` | Render the final prose brief to HTML (linkified) + plaintext; build the subject |
 | `deliver/email.py` | Send the brief via SMTP as multipart HTML+text |
@@ -80,8 +80,10 @@ Malformed JSON tool args are tolerated (logged, treated as empty args) rather th
 ### Tools
 - **web_search** — one tool schema `{query, max_results}` → top N `{title, url, snippet}`,
   backed by a provider chosen at runtime by `SEARCH_PROVIDER`:
-  - **`duckduckgo`** (default, no key): POST `https://html.duckduckgo.com/html/`, parse result
-    anchors with `beautifulsoup4`, unwrap DDG redirect links. Best-effort — scraped endpoint.
+  - **`searxng`** (default, no key): GET the local SearXNG JSON API (`SEARXNG_URL`/search,
+    `format=json`) — the same instance the `web_search` MCP (`mcp/web_search`) uses. Ships the
+    MCP's throttle protection: a token bucket spaces requests and 429/5xx are retried with
+    exponential backoff + jitter (`tools/search/_throttle.py`). Requires a running SearXNG.
   - **`serpapi`** (API key): GET SerpAPI Google endpoint; prefer `news_results`, fall back to
     `organic_results`. Higher reliability + news ranking. Requires `SERPAPI_API_KEY`.
   - Providers implement `search(query, max_results) -> list[SearchResult]` in `tools/search/`.
@@ -121,7 +123,7 @@ committed. `run.py` validates required email config up front (skipped under `--d
 | `OLLAMA_BASE_URL` | `http://localhost:11434/v1` | Ollama OpenAI-compatible endpoint |
 | `MODEL_NAME` | `qwen3:27b` | Served model id |
 | `TOOL_MODE` | `auto` | `native` \| `prompt` \| `auto` |
-| `SEARCH_PROVIDER` | `duckduckgo` | `duckduckgo` \| `serpapi` |
+| `SEARCH_PROVIDER` | `searxng` | `searxng` \| `serpapi` |
 | `SERPAPI_API_KEY` | — | Required when `SEARCH_PROVIDER=serpapi` |
 | `MAX_ITERATIONS` | `8` | Max LLM turns per run |
 | `MAX_TOOL_CALLS` | `20` | Max total tool calls per run |
@@ -148,7 +150,8 @@ portfolio_news_agent/
     web_fetch.py   GET + trafilatura extraction
     search/
       __init__.py  SearchProvider interface + get_provider()
-      duckduckgo.py
+      searxng.py
+      _throttle.py
       serpapi.py
   deliver/
     email.py       SMTP multipart send
@@ -158,7 +161,7 @@ requirements.txt · .env.example · holdings.yaml · .gitignore · README.md
 ```
 
 ## Decisions (resolved)
-- **Search backend:** pluggable. Ship **DuckDuckGo HTML (default, no key)** and **SerpAPI (key-gated)**, selectable via `SEARCH_PROVIDER`. Tavily/Brave deferred — droppable in later as new provider files.
+- **Search backend:** pluggable. Ship **local SearXNG JSON API (default, no key)** and **SerpAPI (key-gated)**, selectable via `SEARCH_PROVIDER`. The SearXNG provider reuses the `web_search` MCP's throttle logic (token bucket + retry/backoff). Tavily/Brave deferred — droppable in later as new provider files.
 - **Tool calling:** support **native + prompt** modes with **`auto`** default, since the served Qwen build's function-calling support is uncertain.
 - **Schedule:** **daily pre-market** (every day, before market open; plist set to 07:00 local).
 - **Brief scope:** **news only** — material news headlines + 1–2 line takeaways per holding. Price moves / analyst actions deferred to a later version.

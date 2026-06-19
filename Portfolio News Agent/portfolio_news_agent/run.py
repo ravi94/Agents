@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from pathlib import Path
 
 from . import brief as brief_mod
 from .agent_loop import run_agent
@@ -27,13 +28,18 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Print the brief to stdout instead of emailing it.",
     )
+    parser.add_argument(
+        "--holdings",
+        metavar="PATH",
+        help="Holdings YAML file to load (overrides the HOLDINGS_FILE env var).",
+    )
     args = parser.parse_args(argv)
 
     _setup_logging()
     log = logging.getLogger("portfolio_news_agent")
 
     try:
-        cfg = load_config()
+        cfg = load_config(Path(args.holdings) if args.holdings else None)
         if not args.dry_run and cfg.delivery_mode == "email":
             cfg.validate_for_email()  # fail fast before spending an agent run
 

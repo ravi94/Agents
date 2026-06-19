@@ -27,9 +27,15 @@ class Config:
     # Search
     search_provider: str
     serpapi_api_key: str
-    # Search throttling + cache (mitigates DuckDuckGo anti-bot throttling)
-    search_min_interval: float
-    search_jitter: float
+    # SearXNG backend + throttle protection (token bucket + retry/backoff on 429/5xx)
+    searxng_url: str
+    searxng_rate_limit_rps: float
+    searxng_rate_limit_burst: int
+    searxng_max_retries: int
+    searxng_backoff_base: float
+    searxng_backoff_max: float
+    searxng_timeout: float
+    # Result cache (per-day on disk)
     search_cache_enabled: bool
     search_cache_dir: Path
     # Guardrails
@@ -84,10 +90,19 @@ def _load_holdings(path: Path) -> list[Holding]:
 
 def load_config(holdings_path: Path | None = None) -> Config:
     load_dotenv(ROOT / ".env")
-    holdings_path = holdings_path or ROOT / "holdings.yaml"
+    # Precedence: explicit arg (CLI/tests) > HOLDINGS_FILE env var > default.
+    # A relative HOLDINGS_FILE is resolved against the project root.
+    if holdings_path is None:
+        env_holdings = os.getenv("HOLDINGS_FILE", "").strip()
+        if env_holdings:
+            holdings_path = Path(env_holdings).expanduser()
+            if not holdings_path.is_absolute():
+                holdings_path = ROOT / holdings_path
+        else:
+            holdings_path = ROOT / "holdings.yaml"
 
-    provider = os.getenv("SEARCH_PROVIDER", "duckduckgo").strip().lower()
-    if provider not in ("duckduckgo", "serpapi"):
+    provider = os.getenv("SEARCH_PROVIDER", "searxng").strip().lower()
+    if provider not in ("searxng", "serpapi"):
         raise ValueError(f"unknown SEARCH_PROVIDER: {provider!r}")
 
     tool_mode = os.getenv("TOOL_MODE", "auto").strip().lower()
@@ -104,8 +119,13 @@ def load_config(holdings_path: Path | None = None) -> Config:
         tool_mode=tool_mode,
         search_provider=provider,
         serpapi_api_key=os.getenv("SERPAPI_API_KEY", ""),
-        search_min_interval=float(os.getenv("SEARCH_MIN_INTERVAL_SECONDS", "2.0")),
-        search_jitter=float(os.getenv("SEARCH_JITTER_SECONDS", "1.0")),
+        searxng_url=os.getenv("SEARXNG_URL", "http://localhost:8080").rstrip("/"),
+        searxng_rate_limit_rps=float(os.getenv("SEARXNG_RATE_LIMIT_RPS", "1.0")),
+        searxng_rate_limit_burst=int(os.getenv("SEARXNG_RATE_LIMIT_BURST", "3")),
+        searxng_max_retries=int(os.getenv("SEARXNG_MAX_RETRIES", "4")),
+        searxng_backoff_base=float(os.getenv("SEARXNG_BACKOFF_BASE", "1.0")),
+        searxng_backoff_max=float(os.getenv("SEARXNG_BACKOFF_MAX", "30.0")),
+        searxng_timeout=float(os.getenv("SEARXNG_TIMEOUT", "15.0")),
         search_cache_enabled=os.getenv("SEARCH_CACHE", "true").strip().lower()
         not in ("0", "false", "no", "off", ""),
         search_cache_dir=Path(

@@ -27,8 +27,14 @@ def get_provider(cfg: Config) -> SearchProvider:
         if not cfg.serpapi_api_key:
             raise ValueError("SEARCH_PROVIDER=serpapi but SERPAPI_API_KEY is not set")
         return SerpApiProvider(cfg.serpapi_api_key)
-    from .duckduckgo import DuckDuckGoProvider
+    from .searxng import SearxngProvider
 
-    return DuckDuckGoProvider(
-        min_interval=cfg.search_min_interval, jitter=cfg.search_jitter
+    return SearxngProvider(
+        cfg.searxng_url,
+        rate_limit_rps=cfg.searxng_rate_limit_rps,
+        rate_limit_burst=cfg.searxng_rate_limit_burst,
+        max_retries=cfg.searxng_max_retries,
+        backoff_base=cfg.searxng_backoff_base,
+        backoff_max=cfg.searxng_backoff_max,
+        timeout=cfg.searxng_timeout,
     )
