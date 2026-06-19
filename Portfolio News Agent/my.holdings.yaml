@@ -1,0 +1,101 @@
+# Your portfolio holdings. Each entry: ticker (required), name, optional notes.
+holdings:
+  - ticker: BEL.NS
+    name: Bharat Electronics
+    notes: News in last 24 hours.
+  - ticker: MAZDOCK.NS
+    name: Mazagon Dock Shipbuilders
+    notes: News in last 24 hours.
+  - ticker: NATIONALUM.NS
+    name: National Aluminium Co. Ltd
+    notes: News in last 24 hours.
+  - ticker: ADANIPORTS.NS
+    name: Adani Ports
+    notes: News in last 24 hours.
+  - ticker: HAL.NS
+    name: Hindustan Aeronautics
+    notes: News in last 24 hours.
+  - ticker: DRREDDY.NS
+    name: Dr. Reddys Laboratories
+    notes: News in last 24 hours.
+  - ticker: SBIN.NS
+    name: State Bank Of India
+    notes: News in last 24 hours.
+  - ticker: PNB.NS
+    name: Punjab National Bank
+    notes: News in last 24 hours.
+  - ticker: NTPC.NS
+    name: NTPC
+    notes: News in last 24 hours.
+  - ticker: ITC.NS
+    name: ITC
+    notes: News in last 24 hours.
+  - ticker: PAYTM.NS
+    name: Paytm (One97 Communications)
+    notes: News in last 24 hours.
+  - ticker: LT.NS
+    name: Larsen & Toubro
+    notes: News in last 24 hours.
+  - ticker: RELIANCE.NS
+    name: Reliance Industries
+    notes: News in last 24 hours.
+  - ticker: OLAELEC.NS
+    name: OLA Electric Mobility
+    notes: News in last 24 hours.
+  - ticker: IDFCFIRSTB.NS
+    name: IDFC First Bank
+    notes: News in last 24 hours.
+  - ticker: TATAPOWER.NS
+    name: Tata Power
+    notes: News in last 24 hours.
+  - ticker: GLS.NS
+    name: Glenmark Life Sciences
+    notes: News in last 24 hours.
+  - ticker: LODHA.NS
+    name: Lodha Developers (Macrotech)
+    notes: News in last 24 hours.
+  - ticker: TATAMOTORS.NS
+    name: Tata Motors Commercial Vehicles
+    notes: News in last 24 hours.
+  - ticker: RECLTD.NS
+    name: REC
+    notes: News in last 24 hours.
+  - ticker: KIRLOSFER.NS
+    name: Kirloskar Ferrous Industries
+    notes: News in last 24 hours.
+  - ticker: TATAMOTORS.NS
+    name: Tata Motors Passenger Vehicles
+    notes: News in last 24 hours.
+  - ticker: JIOFIN.NS
+    name: Jio Financial Services
+    notes: News in last 24 hours.
+  - ticker: PREMIERENE.NS
+    name: Premier Energies Limited
+    notes: News in last 24 hours.
+  - ticker: IDEAFORGE.NS
+    name: ideaForge Technology
+    notes: News in last 24 hours.
+  - ticker: EPACKPREFA.NS
+    name: EPack Prefab Technologies
+    notes: News in last 24 hours.
+  - ticker: AVANTEL.NS
+    name: Avantel
+    notes: News in last 24 hours.
+  - ticker: HINDUNILVR.NS
+    name: Hindustan Unilever
+    notes: News in last 24 hours.
+  - ticker: YESBANK.NS
+    name: Yes Bank
+    notes: News in last 24 hours.
+  - ticker: TEJASNET.NS
+    name: Tejas Networks
+    notes: News in last 24 hours.
+  - ticker: TARSONS.NS
+    name: Tarsons Products
+    notes: News in last 24 hours.
+  - ticker: ITCHOTELS.NS
+    name: ITC Hotels Limited
+    notes: News in last 24 hours.
+  - ticker: KWIL.NS
+    name: Kwality Wall's (India)
+    notes: News in last 24 hours.

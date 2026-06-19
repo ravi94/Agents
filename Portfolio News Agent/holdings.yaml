@@ -1,0 +1,10 @@
+# Your portfolio holdings. Each entry: ticker (required), name, optional notes.
+holdings:
+  - ticker: AAPL
+    name: Apple Inc.
+    notes: Watching services revenue and any hardware launch chatter.
+  - ticker: NVDA
+    name: NVIDIA Corp.
+    notes: Datacenter/AI demand, export-control headlines.
+  - ticker: MSFT
+    name: Microsoft Corp.

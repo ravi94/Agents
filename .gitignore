@@ -1,0 +1,24 @@
+# Secrets / config
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtualenvs
+.venv/
+venv/
+
+# Logs
+*.log
+
+# Runtime artifacts
+.search_cache/
+summary-*.md
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,14 @@
+# Your portfolio holdings. Each entry: ticker (required), name, optional notes.
+holdings:
+  - ticker: BEL.NS
+    name: Bharat Electronics
+    notes: News in last 24 hours.
+  - ticker: RELIANCE.NS
+    name: Reliance Industries
+    notes: News in last 24 hours.
+  - ticker: ITC.NS
+    name: ITC
+    notes: News in last 24 hours.
+  - ticker: TATAPOWER.NS
+    name: Tata Power
+    notes: News in last 24 hours.

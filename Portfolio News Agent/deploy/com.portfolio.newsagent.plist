@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  launchd job: run the Portfolio News Agent daily, pre-market.
+  Install:
+    1. Edit the two ABSOLUTE paths below (project dir + venv python).
+    2. cp this file to ~/Library/LaunchAgents/
+    3. launchctl load ~/Library/LaunchAgents/com.portfolio.newsagent.plist
+  Unload: launchctl unload ~/Library/LaunchAgents/com.portfolio.newsagent.plist
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.portfolio.newsagent</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/ABSOLUTE/PATH/TO/PROJECT/.venv/bin/python</string>
+        <string>-m</string>
+        <string>portfolio_news_agent.run</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/ABSOLUTE/PATH/TO/PROJECT</string>
+
+    <!-- Daily pre-market: 07:00 local, every day. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/ABSOLUTE/PATH/TO/PROJECT/agent.log</string>
+    <key>StandardErrorPath</key>
+    <string>/ABSOLUTE/PATH/TO/PROJECT/agent.log</string>
+</dict>
+</plist>
