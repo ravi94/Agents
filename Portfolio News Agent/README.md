@@ -14,8 +14,10 @@ See [design.md](design.md) for architecture and decisions.
   (Google Account → Security → 2-Step Verification → App passwords) and use that as
   `SMTP_PASSWORD` — your normal password will not work.
 - For the default `searxng` search backend: a locally-hosted SearXNG instance
-  (no API key). See [`../../mcp/web_search`](../../mcp/web_search) for a ready-to-run
-  Docker setup; point `SEARXNG_URL` at it (default `http://localhost:8080`).
+  (no API key), reachable at `SEARXNG_URL` (default `http://localhost:8080`).
+  **[Docker](https://docs.docker.com/get-docker/)** is the easiest way to run one —
+  see [Setup step 4](#setup) below. (The [`../../mcp/web_search`](../../mcp/web_search)
+  MCP ships an equivalent ready-to-run setup you can point `SEARXNG_URL` at instead.)
 - For `serpapi` search (optional): a [SerpAPI](https://serpapi.com) API key.
 
 ## Setup
@@ -39,6 +41,37 @@ Start Ollama and pull the model named in `.env` (`MODEL_NAME`):
 ollama serve            # in a separate terminal, if not already running
 ollama pull qwen3:27b   # must match MODEL_NAME in .env
 ```
+
+Start a SearXNG instance for the default `searxng` backend (skip if you use
+`SEARCH_PROVIDER=serpapi`). SearXNG must expose its **JSON** API — that format is off by
+default, so enable it via a settings file:
+
+```bash
+# 4. Run SearXNG in Docker with the JSON output format enabled.
+mkdir -p searxng
+cat > searxng/settings.yml <<'YAML'
+use_default_settings: true
+server:
+  secret_key: "change-me"      # any random string
+search:
+  formats:
+    - html
+    - json                     # required: the agent queries the JSON API
+YAML
+
+docker run -d --name searxng -p 8080:8080 \
+  -v "$PWD/searxng:/etc/searxng" \
+  docker.io/searxng/searxng:latest
+```
+
+This serves SearXNG at `http://localhost:8080` — the default `SEARXNG_URL`. Verify it
+answers JSON:
+
+```bash
+curl 'http://localhost:8080/search?q=test&format=json' | head
+```
+
+If you run it elsewhere (different host/port), set `SEARXNG_URL` in `.env` to match.
 
 ## Run
 
