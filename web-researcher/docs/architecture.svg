@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 640" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1e1e1e"/>
+    </marker>
+    <marker id="arrow-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8b5cf6"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#15803d"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b45309"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="450" y="36" text-anchor="middle" font-size="26" font-weight="700" fill="#1e1e1e">Web Researcher Architecture</text>
+  <text x="450" y="62" text-anchor="middle" font-size="14" fill="#6b7280">Local-first CLI  ·  LangGraph ReAct  ·  Ollama + SearXNG</text>
+
+  <!-- Layer zones -->
+  <rect x="20" y="90" width="860" height="110" rx="12" fill="#dbe4ff" opacity="0.35"/>
+  <text x="34" y="110" font-size="12" font-weight="600" fill="#4338ca">INPUT / OUTPUT</text>
+
+  <rect x="20" y="220" width="860" height="110" rx="12" fill="#e5dbff" opacity="0.4"/>
+  <text x="34" y="240" font-size="12" font-weight="600" fill="#6d28d9">AGENT CORE</text>
+
+  <rect x="20" y="350" width="860" height="120" rx="12" fill="#d3f9d8" opacity="0.4"/>
+  <text x="34" y="370" font-size="12" font-weight="600" fill="#15803d">TOOLS</text>
+
+  <rect x="20" y="490" width="860" height="90" rx="12" fill="#ffe8cc" opacity="0.5"/>
+  <text x="34" y="510" font-size="12" font-weight="600" fill="#b45309">EXTERNAL SERVICES</text>
+
+  <!-- ===== INPUT / OUTPUT row ===== -->
+  <!-- User -->
+  <ellipse cx="110" cy="155" rx="60" ry="32" fill="#a5d8ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="110" y="161" text-anchor="middle" font-size="16" font-weight="600" fill="#1e3a8a">User</text>
+
+  <!-- Arrow user -> CLI with label -->
+  <line x1="172" y1="155" x2="232" y2="155" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="202" y="146" text-anchor="middle" font-size="11" fill="#374151">research "..."</text>
+
+  <!-- Typer CLI -->
+  <rect x="234" y="125" width="140" height="60" rx="10" fill="#a5d8ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="304" y="151" text-anchor="middle" font-size="16" font-weight="600" fill="#1e3a8a">Typer CLI</text>
+  <text x="304" y="170" text-anchor="middle" font-size="11" fill="#1e40af">cli.py · stream events</text>
+
+  <!-- Arrow CLI -> Agent -->
+  <line x1="376" y1="155" x2="430" y2="155" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Agent placeholder in this row (shows handoff) -->
+  <rect x="432" y="125" width="200" height="60" rx="10" fill="#d0bfff" stroke="#8b5cf6" stroke-width="2"/>
+  <text x="532" y="151" text-anchor="middle" font-size="16" font-weight="600" fill="#5b21b6">build_agent(settings)</text>
+  <text x="532" y="170" text-anchor="middle" font-size="11" fill="#6d28d9">agent.py</text>
+
+  <!-- Arrow agent row -> report -->
+  <line x1="634" y1="155" x2="690" y2="155" stroke="#15803d" stroke-width="2" marker-end="url(#arrow-green)"/>
+  <text x="662" y="146" text-anchor="middle" font-size="11" fill="#15803d">stream</text>
+
+  <!-- Report -->
+  <rect x="692" y="125" width="180" height="60" rx="10" fill="#b2f2bb" stroke="#15803d" stroke-width="2"/>
+  <text x="782" y="149" text-anchor="middle" font-size="16" font-weight="600" fill="#14532d">reports/*.md</text>
+  <text x="782" y="170" text-anchor="middle" font-size="11" fill="#166534">save_report() · frontmatter</text>
+
+  <!-- ===== AGENT CORE row ===== -->
+  <!-- LangGraph ReAct big box -->
+  <rect x="280" y="252" width="340" height="68" rx="12" fill="#d0bfff" stroke="#8b5cf6" stroke-width="2.5"/>
+  <text x="450" y="280" text-anchor="middle" font-size="18" font-weight="700" fill="#4c1d95">LangGraph ReAct Agent</text>
+  <text x="450" y="302" text-anchor="middle" font-size="12" fill="#5b21b6">create_react_agent(ChatOllama · SYSTEM_PROMPT · tools)</text>
+
+  <!-- Settings on left of agent -->
+  <rect x="60" y="252" width="170" height="68" rx="10" fill="#fff3bf" stroke="#b45309" stroke-width="2"/>
+  <text x="145" y="278" text-anchor="middle" font-size="15" font-weight="600" fill="#92400e">Settings (.env)</text>
+  <text x="145" y="298" text-anchor="middle" font-size="11" fill="#78350f">searxng_url · model</text>
+  <text x="145" y="312" text-anchor="middle" font-size="11" fill="#78350f">temperature · max_iter</text>
+  <line x1="232" y1="286" x2="278" y2="286" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- ChatOllama main model on right of agent -->
+  <rect x="670" y="252" width="170" height="68" rx="10" fill="#e9d5ff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="755" y="278" text-anchor="middle" font-size="15" font-weight="600" fill="#5b21b6">ChatOllama</text>
+  <text x="755" y="298" text-anchor="middle" font-size="12" fill="#6d28d9">qwen2.5:14b</text>
+  <text x="755" y="312" text-anchor="middle" font-size="11" fill="#6d28d9">temp 0.2 · reasoning</text>
+  <line x1="620" y1="286" x2="668" y2="286" stroke="#8b5cf6" stroke-width="2" marker-end="url(#arrow-purple)"/>
+  <line x1="668" y1="290" x2="620" y2="290" stroke="#8b5cf6" stroke-width="2" marker-end="url(#arrow-purple)"/>
+
+  <!-- Down-link from row1 agent box to agent core -->
+  <line x1="532" y1="186" x2="450" y2="250" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="4,4"/>
+
+  <!-- ===== Fan-out from agent to tools ===== -->
+  <line x1="340" y1="320" x2="170" y2="385" stroke="#8b5cf6" stroke-width="2" marker-end="url(#arrow-purple)"/>
+  <line x1="450" y1="320" x2="450" y2="385" stroke="#8b5cf6" stroke-width="2" marker-end="url(#arrow-purple)"/>
+  <text x="465" y="350" font-size="11" fill="#6d28d9">tool calls (JSON)</text>
+  <line x1="560" y1="320" x2="730" y2="385" stroke="#8b5cf6" stroke-width="2" marker-end="url(#arrow-purple)"/>
+
+  <!-- ===== TOOLS row ===== -->
+  <!-- search_web -->
+  <rect x="90" y="385" width="180" height="80" rx="10" fill="#d3f9d8" stroke="#15803d" stroke-width="2"/>
+  <text x="180" y="412" text-anchor="middle" font-size="17" font-weight="700" fill="#14532d">search_web</text>
+  <text x="180" y="432" text-anchor="middle" font-size="11" fill="#166534">tools/search.py</text>
+  <text x="180" y="450" text-anchor="middle" font-size="11" fill="#166534">dedupe + denylist</text>
+
+  <!-- fetch_url -->
+  <rect x="360" y="385" width="180" height="80" rx="10" fill="#d3f9d8" stroke="#15803d" stroke-width="2"/>
+  <text x="450" y="412" text-anchor="middle" font-size="17" font-weight="700" fill="#14532d">fetch_url</text>
+  <text x="450" y="432" text-anchor="middle" font-size="11" fill="#166534">tools/fetch.py</text>
+  <text x="450" y="450" text-anchor="middle" font-size="11" fill="#166534">httpx + trafilatura</text>
+
+  <!-- summarize_text -->
+  <rect x="630" y="385" width="200" height="80" rx="10" fill="#d3f9d8" stroke="#15803d" stroke-width="2"/>
+  <text x="730" y="412" text-anchor="middle" font-size="17" font-weight="700" fill="#14532d">summarize_text</text>
+  <text x="730" y="432" text-anchor="middle" font-size="11" fill="#166534">tools/summarize.py</text>
+  <text x="730" y="450" text-anchor="middle" font-size="11" fill="#166534">secondary ChatOllama</text>
+
+  <!-- ===== Tool -> External arrows ===== -->
+  <line x1="180" y1="465" x2="180" y2="520" stroke="#b45309" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#arrow-orange)"/>
+  <line x1="450" y1="465" x2="450" y2="520" stroke="#b45309" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#arrow-orange)"/>
+  <line x1="730" y1="465" x2="730" y2="520" stroke="#b45309" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#arrow-orange)"/>
+
+  <!-- ===== EXTERNAL row ===== -->
+  <ellipse cx="180" cy="545" rx="90" ry="22" fill="#ffd8a8" stroke="#b45309" stroke-width="2"/>
+  <text x="180" y="551" text-anchor="middle" font-size="14" font-weight="600" fill="#7c2d12">SearXNG  /search?format=json</text>
+
+  <ellipse cx="450" cy="545" rx="65" ry="22" fill="#ffd8a8" stroke="#b45309" stroke-width="2"/>
+  <text x="450" y="551" text-anchor="middle" font-size="14" font-weight="600" fill="#7c2d12">Open Web</text>
+
+  <ellipse cx="730" cy="545" rx="90" ry="22" fill="#ffd8a8" stroke="#b45309" stroke-width="2"/>
+  <text x="730" y="551" text-anchor="middle" font-size="14" font-weight="600" fill="#7c2d12">Ollama  ·  llama3.1:8b</text>
+
+  <!-- Footer note -->
+  <text x="450" y="615" text-anchor="middle" font-size="11" fill="#6b7280">recursion limit = max_iterations × 2 + 5   ·   tools return JSON observations   ·   reports gitignored</text>
+</svg>
