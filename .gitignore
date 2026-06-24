@@ -17,6 +17,9 @@ venv/
 .search_cache/
 summary-*.md
 
+# Large binaries / installers
+*.dmg
+
 # OS / editor
 .DS_Store
 .idea/
