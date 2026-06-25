@@ -15,6 +15,11 @@ dependencies = [
     "pydantic>=2.7.0",
     "pydantic-settings>=2.4.0",
     "python-dotenv>=1.0.0",
+    # Observability — only imported when TRACING_ENABLED=true / --trace
+    "arize-phoenix>=5.0.0",
+    "openinference-instrumentation-langchain>=0.1.29",
+    "opentelemetry-exporter-otlp>=1.27.0",
+    "opentelemetry-sdk>=1.27.0",
 ]
 
 [dependency-groups]

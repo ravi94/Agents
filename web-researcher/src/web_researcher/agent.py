@@ -6,7 +6,7 @@ from langchain_ollama import ChatOllama
 from langgraph.prebuilt import create_react_agent
 
 from web_researcher.config import Settings
-from web_researcher.prompts import SYSTEM_PROMPT
+from web_researcher.prompts import build_system_prompt
 from web_researcher.tools import (
     make_fetch_tool,
     make_search_tool,
@@ -31,6 +31,6 @@ def build_agent(settings: Settings):
     agent = create_react_agent(
         model=llm,
         tools=tools,
-        prompt=SYSTEM_PROMPT,
+        prompt=build_system_prompt(),
     )
     return agent

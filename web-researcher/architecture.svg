@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 680" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1e1e1e"/>
+    </marker>
+    <marker id="arrow-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8b5cf6"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#15803d"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b45309"/>
+    </marker>
+    <marker id="arrow-pink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#be185d"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="550" y="36" text-anchor="middle" font-size="26" font-weight="700" fill="#1e1e1e">Web Researcher Architecture</text>
+  <text x="550" y="62" text-anchor="middle" font-size="14" fill="#6b7280">Local-first CLI  ·  LangGraph ReAct  ·  Ollama + SearXNG  ·  Phoenix observability</text>
+
+  <!-- Layer zones (main pipeline column) -->
+  <rect x="20" y="90" width="860" height="110" rx="12" fill="#dbe4ff" opacity="0.35"/>
+  <text x="34" y="110" font-size="12" font-weight="600" fill="#4338ca">INPUT / OUTPUT</text>
+
+  <rect x="20" y="220" width="860" height="110" rx="12" fill="#e5dbff" opacity="0.4"/>
+  <text x="34" y="240" font-size="12" font-weight="600" fill="#6d28d9">AGENT CORE</text>
+
+  <rect x="20" y="350" width="860" height="120" rx="12" fill="#d3f9d8" opacity="0.4"/>
+  <text x="34" y="370" font-size="12" font-weight="600" fill="#15803d">TOOLS</text>
+
+  <rect x="20" y="490" width="860" height="90" rx="12" fill="#ffe8cc" opacity="0.5"/>
+  <text x="34" y="510" font-size="12" font-weight="600" fill="#b45309">EXTERNAL SERVICES</text>
+
+  <!-- Observability sidebar -->
+  <rect x="900" y="90" width="180" height="490" rx="12" fill="#fce7f3" opacity="0.5"/>
+  <text x="912" y="110" font-size="12" font-weight="600" fill="#be185d">OBSERVABILITY</text>
+
+  <!-- ===== INPUT / OUTPUT row ===== -->
+  <ellipse cx="110" cy="155" rx="60" ry="32" fill="#a5d8ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="110" y="161" text-anchor="middle" font-size="16" font-weight="600" fill="#1e3a8a">User</text>
+
+  <line x1="172" y1="155" x2="232" y2="155" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="202" y="146" text-anchor="middle" font-size="11" fill="#374151">research "..."</text>
+
+  <rect x="234" y="125" width="140" height="60" rx="10" fill="#a5d8ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="304" y="151" text-anchor="middle" font-size="16" font-weight="600" fill="#1e3a8a">Typer CLI</text>
+  <text x="304" y="170" text-anchor="middle" font-size="11" fill="#1e40af">cli.py · stream events</text>
+
+  <line x1="376" y1="155" x2="430" y2="155" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="432" y="125" width="200" height="60" rx="10" fill="#d0bfff" stroke="#8b5cf6" stroke-width="2"/>
+  <text x="532" y="151" text-anchor="middle" font-size="16" font-weight="600" fill="#5b21b6">build_agent(settings)</text>
+  <text x="532" y="170" text-anchor="middle" font-size="11" fill="#6d28d9">agent.py  +  init_tracing()</text>
+
+  <line x1="634" y1="155" x2="690" y2="155" stroke="#15803d" stroke-width="2" marker-end="url(#arrow-green)"/>
+  <text x="662" y="146" text-anchor="middle" font-size="11" fill="#15803d">stream</text>
+
+  <rect x="692" y="125" width="180" height="60" rx="10" fill="#b2f2bb" stroke="#15803d" stroke-width="2"/>
+  <text x="782" y="149" text-anchor="middle" font-size="16" font-weight="600" fill="#14532d">reports/*.md</text>
+  <text x="782" y="170" text-anchor="middle" font-size="11" fill="#166534">save_report() · frontmatter</text>
+
+  <!-- ===== AGENT CORE row ===== -->
+  <rect x="280" y="252" width="340" height="68" rx="12" fill="#d0bfff" stroke="#8b5cf6" stroke-width="2.5"/>
+  <text x="450" y="280" text-anchor="middle" font-size="18" font-weight="700" fill="#4c1d95">LangGraph ReAct Agent</text>
+  <text x="450" y="302" text-anchor="middle" font-size="12" fill="#5b21b6">create_react_agent(ChatOllama · SYSTEM_PROMPT · tools)</text>
+
+  <rect x="60" y="252" width="170" height="68" rx="10" fill="#fff3bf" stroke="#b45309" stroke-width="2"/>
+  <text x="145" y="278" text-anchor="middle" font-size="15" font-weight="600" fill="#92400e">Settings (.env)</text>
+  <text x="145" y="298" text-anchor="middle" font-size="11" fill="#78350f">searxng_url · model</text>
+  <text x="145" y="312" text-anchor="middle" font-size="11" fill="#78350f">tracing_enabled · max_iter</text>
+  <line x1="232" y1="286" x2="278" y2="286" stroke="#1e1e1e" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <rect x="670" y="252" width="170" height="68" rx="10" fill="#e9d5ff" stroke="#7c3aed" stroke-width="2"/>
+  <text x="755" y="278" text-anchor="middle" font-size="15" font-weight="600" fill="#5b21b6">ChatOllama</text>
+  <text x="755" y="298" text-anchor="middle" font-size="12" fill="#6d28d9">qwen2.5:14b</text>
+  <text x="755" y="312" text-anchor="middle" font-size="11" fill="#6d28d9">temp 0.2 · reasoning</text>
+  <line x1="620" y1="286" x2="668" y2="286" stroke="#8b5cf6" stroke-width="2" marker-end="url(#arrow-purple)"/>
+  <line x1="668" y1="290" x2="620" y2="290" stroke="#8b5cf6" stroke-width="2" marker-end="url(#arrow-purple)"/>
+
+  <line x1="532" y1="186" x2="450" y2="250" stroke="#8b5cf6" stroke-width="2" stroke-dasharray="4,4"/>
+
+  <!-- ===== Fan-out from agent to tools ===== -->
+  <line x1="340" y1="320" x2="170" y2="385" stroke="#8b5cf6" stroke-width="2" marker-end="url(#arrow-purple)"/>
+  <line x1="450" y1="320" x2="450" y2="385" stroke="#8b5cf6" stroke-width="2" marker-end="url(#arrow-purple)"/>
+  <text x="465" y="350" font-size="11" fill="#6d28d9">tool calls (JSON)</text>
+  <line x1="560" y1="320" x2="730" y2="385" stroke="#8b5cf6" stroke-width="2" marker-end="url(#arrow-purple)"/>
+
+  <!-- ===== TOOLS row ===== -->
+  <rect x="90" y="385" width="180" height="80" rx="10" fill="#d3f9d8" stroke="#15803d" stroke-width="2"/>
+  <text x="180" y="412" text-anchor="middle" font-size="17" font-weight="700" fill="#14532d">search_web</text>
+  <text x="180" y="432" text-anchor="middle" font-size="11" fill="#166534">tools/search.py</text>
+  <text x="180" y="450" text-anchor="middle" font-size="11" fill="#166534">dedupe + denylist</text>
+
+  <rect x="360" y="385" width="180" height="80" rx="10" fill="#d3f9d8" stroke="#15803d" stroke-width="2"/>
+  <text x="450" y="412" text-anchor="middle" font-size="17" font-weight="700" fill="#14532d">fetch_url</text>
+  <text x="450" y="432" text-anchor="middle" font-size="11" fill="#166534">tools/fetch.py</text>
+  <text x="450" y="450" text-anchor="middle" font-size="11" fill="#166534">httpx + trafilatura</text>
+
+  <rect x="630" y="385" width="200" height="80" rx="10" fill="#d3f9d8" stroke="#15803d" stroke-width="2"/>
+  <text x="730" y="412" text-anchor="middle" font-size="17" font-weight="700" fill="#14532d">summarize_text</text>
+  <text x="730" y="432" text-anchor="middle" font-size="11" fill="#166534">tools/summarize.py</text>
+  <text x="730" y="450" text-anchor="middle" font-size="11" fill="#166534">secondary ChatOllama</text>
+
+  <!-- ===== Tool -> External arrows ===== -->
+  <line x1="180" y1="465" x2="180" y2="520" stroke="#b45309" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#arrow-orange)"/>
+  <line x1="450" y1="465" x2="450" y2="520" stroke="#b45309" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#arrow-orange)"/>
+  <line x1="730" y1="465" x2="730" y2="520" stroke="#b45309" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#arrow-orange)"/>
+
+  <!-- ===== EXTERNAL row ===== -->
+  <ellipse cx="180" cy="545" rx="90" ry="22" fill="#ffd8a8" stroke="#b45309" stroke-width="2"/>
+  <text x="180" y="551" text-anchor="middle" font-size="14" font-weight="600" fill="#7c2d12">SearXNG  /search?format=json</text>
+
+  <ellipse cx="450" cy="545" rx="65" ry="22" fill="#ffd8a8" stroke="#b45309" stroke-width="2"/>
+  <text x="450" y="551" text-anchor="middle" font-size="14" font-weight="600" fill="#7c2d12">Open Web</text>
+
+  <ellipse cx="730" cy="545" rx="90" ry="22" fill="#ffd8a8" stroke="#b45309" stroke-width="2"/>
+  <text x="730" y="551" text-anchor="middle" font-size="14" font-weight="600" fill="#7c2d12">Ollama  ·  llama3.1:8b</text>
+
+  <!-- ===== OBSERVABILITY sidebar contents ===== -->
+  <!-- OpenInference instrumentor (sits closest to the agent) -->
+  <rect x="920" y="130" width="140" height="70" rx="10" fill="#fbcfe8" stroke="#be185d" stroke-width="2"/>
+  <text x="990" y="155" text-anchor="middle" font-size="14" font-weight="600" fill="#831843">OpenInference</text>
+  <text x="990" y="173" text-anchor="middle" font-size="11" fill="#9d174d">LangChainInstrumentor</text>
+  <text x="990" y="189" text-anchor="middle" font-size="11" fill="#9d174d">.instrument()</text>
+
+  <!-- OTel SDK -->
+  <rect x="920" y="225" width="140" height="60" rx="10" fill="#fbcfe8" stroke="#be185d" stroke-width="2"/>
+  <text x="990" y="250" text-anchor="middle" font-size="14" font-weight="600" fill="#831843">OTel SDK</text>
+  <text x="990" y="269" text-anchor="middle" font-size="11" fill="#9d174d">OTLP/HTTP exporter</text>
+
+  <!-- Phoenix UI / Collector -->
+  <rect x="920" y="310" width="140" height="90" rx="10" fill="#f9a8d4" stroke="#be185d" stroke-width="2.5"/>
+  <text x="990" y="338" text-anchor="middle" font-size="16" font-weight="700" fill="#831843">Phoenix</text>
+  <text x="990" y="358" text-anchor="middle" font-size="11" fill="#9d174d">launch_app() · embedded</text>
+  <text x="990" y="375" text-anchor="middle" font-size="11" fill="#9d174d">UI + OTLP collector</text>
+  <text x="990" y="392" text-anchor="middle" font-size="11" font-weight="600" fill="#9d174d">localhost:6006</text>
+
+  <!-- Trace view illustration -->
+  <rect x="920" y="425" width="140" height="140" rx="10" fill="#ffffff" stroke="#be185d" stroke-width="1.5"/>
+  <text x="990" y="442" text-anchor="middle" font-size="11" font-weight="600" fill="#831843">Trace tree</text>
+  <line x1="935" y1="455" x2="1045" y2="455" stroke="#fbcfe8" stroke-width="1"/>
+  <!-- root span -->
+  <rect x="935" y="463" width="100" height="10" rx="2" fill="#8b5cf6"/>
+  <text x="940" y="486" font-size="9" fill="#5b21b6">react_agent</text>
+  <!-- llm span -->
+  <rect x="945" y="495" width="60" height="8" rx="2" fill="#a78bfa"/>
+  <text x="950" y="514" font-size="9" fill="#5b21b6">ChatOllama</text>
+  <!-- tool span -->
+  <rect x="945" y="523" width="40" height="8" rx="2" fill="#22c55e"/>
+  <text x="950" y="542" font-size="9" fill="#166534">search_web</text>
+  <!-- tool span 2 -->
+  <rect x="945" y="551" width="50" height="8" rx="2" fill="#22c55e"/>
+  <text x="950" y="563" font-size="9" fill="#166534">fetch_url</text>
+
+  <!-- ===== Trace arrows: agent + tools -> OpenInference ===== -->
+  <!-- From agent core (right edge) to OpenInference (curved entry) -->
+  <path d="M 840 286 Q 880 200 920 165" stroke="#be185d" stroke-width="2" stroke-dasharray="5,4" fill="none" marker-end="url(#arrow-pink)"/>
+  <text x="855" y="218" font-size="11" font-style="italic" fill="#be185d">spans</text>
+
+  <!-- From tools row (right edge of summarize) to OpenInference -->
+  <path d="M 830 425 Q 880 340 920 200" stroke="#be185d" stroke-width="2" stroke-dasharray="5,4" fill="none" marker-end="url(#arrow-pink)"/>
+
+  <!-- Internal flow within sidebar: OpenInference -> OTel -> Phoenix -->
+  <line x1="990" y1="200" x2="990" y2="223" stroke="#be185d" stroke-width="2" marker-end="url(#arrow-pink)"/>
+  <line x1="990" y1="285" x2="990" y2="308" stroke="#be185d" stroke-width="2" marker-end="url(#arrow-pink)"/>
+  <line x1="990" y1="400" x2="990" y2="423" stroke="#be185d" stroke-width="1.5" stroke-dasharray="3,3"/>
+
+  <!-- Footer note -->
+  <text x="550" y="625" text-anchor="middle" font-size="11" fill="#6b7280">recursion limit = max_iterations × 2 + 5   ·   tools return JSON observations   ·   reports gitignored</text>
+  <text x="550" y="645" text-anchor="middle" font-size="11" fill="#9d174d">tracing is opt-in: TRACING_ENABLED=true  or  research "..." --trace</text>
+</svg>

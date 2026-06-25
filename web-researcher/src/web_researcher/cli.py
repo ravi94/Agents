@@ -16,6 +16,7 @@ from rich.rule import Rule
 from web_researcher.agent import build_agent
 from web_researcher.config import get_settings
 from web_researcher.report import save_report
+from web_researcher.tracing import init_tracing
 
 app = typer.Typer(
     add_completion=False,
@@ -54,6 +55,9 @@ def main(
     no_save: bool = typer.Option(
         False, "--no-save", help="Skip writing the markdown report file"
     ),
+    trace: bool = typer.Option(
+        False, "--trace", help="Launch embedded Phoenix UI and stream OTel traces"
+    ),
 ):
     """Research QUESTION using SearXNG + Ollama, stream progress, save report."""
     settings = get_settings()
@@ -61,6 +65,17 @@ def main(
         settings.ollama_model = model
     if max_iterations:
         settings.max_iterations = max_iterations
+    if trace:
+        settings.tracing_enabled = True
+
+    # Init tracing BEFORE build_agent so ChatOllama / tool factories are
+    # instrumented at construction time.
+    tracing = init_tracing(settings)
+    if tracing:
+        console.print(
+            f"[magenta]Phoenix UI:[/magenta] [bold]{tracing.ui_url}[/bold]  "
+            f"[dim]project={tracing.project_name}[/dim]"
+        )
 
     console.print(
         Panel.fit(
