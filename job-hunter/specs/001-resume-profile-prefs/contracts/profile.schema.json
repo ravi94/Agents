@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Profile",
+  "description": "Structured candidate profile derived once from a resume PDF (M1).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["skills", "experience", "roles", "source_resume_filename", "parsed_at"],
+  "properties": {
+    "full_name": {
+      "type": ["string", "null"]
+    },
+    "skills": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Non-empty; an all-empty extraction is a parse failure, not a valid profile."
+    },
+    "experience": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["company", "title"],
+        "properties": {
+          "company": { "type": "string" },
+          "title": { "type": "string" },
+          "start": { "type": ["string", "null"] },
+          "end": { "type": ["string", "null"] },
+          "summary": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "seniority": {
+      "type": ["string", "null"],
+      "enum": ["junior", "mid", "senior", "staff", "principal", null],
+      "description": "Null when the resume gives no basis; never fabricated."
+    },
+    "roles": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "total_years_experience": {
+      "type": ["number", "null"],
+      "minimum": 0
+    },
+    "source_resume_filename": {
+      "type": "string"
+    },
+    "parsed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
