@@ -64,25 +64,74 @@ You can also run it as a module without the console script:
 
 | Command | What it does | Status |
 |---|---|---|
-| `jobhunter profile <resume.pdf>` | Extract resume text → structure via Claude → write `profile.json`. | Skeleton (placeholder handler) — implemented in US1 |
+| `jobhunter profile <resume.pdf>` | Extract resume text → structure via Claude → write `profile.json`. | ✅ Implemented (US1) |
 | `jobhunter prefs init [--force]` | One-time guided interview → write `prefs.yaml`. Refuses to overwrite without `--force`. | Skeleton — implemented in US2 |
 | `jobhunter prefs validate` | Validate `prefs.yaml` against the schema. | Skeleton — implemented in US2 |
 | `jobhunter db init` | Create the SQLite job store (`jobs.db`) if absent; idempotent. | Skeleton — implemented in US3 |
 
-> Placeholder commands currently print `not implemented yet` to stderr and exit
-> non-zero. They become functional as their user stories land (see
+> The remaining skeleton commands (`prefs`, `db`) currently print
+> `not implemented yet` to stderr and exit non-zero. They become functional as
+> their user stories land (see
 > [tasks.md](specs/001-resume-profile-prefs/tasks.md)).
+
+#### Building your profile
+
+`jobhunter profile` needs the Claude CLI logged in (it calls `claude -p` to
+structure the resume). Point it at a text-based PDF:
+
+```bash
+export JOBHUNTER_HOME="$(pwd)/data"          # keep state inside the repo
+.venv/bin/jobhunter profile path/to/resume.pdf
+# -> writes data/profile.json and prints a skills / seniority / roles summary
+```
+
+The write is atomic and the resume text is the only thing sent to the provider.
+An image-only/scanned PDF is rejected before any Claude call, and any failure
+leaves an existing `profile.json` untouched.
 
 ### App data location
 
-All files resolve under the app data directory. Override it for testing or to
-relocate your data:
+All state resolves under the app data directory. The default is `~/.job-hunter/`,
+but this project ships a `data/` folder and uses it as the home via the
+`JOBHUNTER_HOME` override, so all files stay inside the repo:
 
 ```bash
-JOBHUNTER_HOME=/tmp/jh-test .venv/bin/jobhunter db init
+export JOBHUNTER_HOME="$(pwd)/data"   # run from the repo root
+.venv/bin/jobhunter db init            # -> ./data/jobs.db
 ```
 
-Resolved paths: `<home>/profile.json`, `<home>/prefs.yaml`, `<home>/jobs.db`.
+Put the `export` in your shell session (or prefix individual commands with
+`JOBHUNTER_HOME="$(pwd)/data"`) so the CLI reads/writes under `data/`.
+
+Resolved paths (with the override above):
+
+| File | Location |
+|---|---|
+| Profile | `data/profile.json` |
+| Preferences | `data/prefs.yaml` |
+| Job store | `data/jobs.db` |
+
+The `data/` folder is tracked in git but its **contents are gitignored** — your
+profile, prefs, and DB stay local. Set `JOBHUNTER_HOME` to any other path to
+relocate the data.
+
+### Logs & monitoring
+
+Every run writes a structured, rotating log under the app data directory, with a
+per-run correlation id threaded through each line and every LLM/external call
+traced (metadata only — never your resume or prefs content):
+
+```bash
+tail -f "$JOBHUNTER_HOME/logs/jobhunter.log"   # or ~/.job-hunter/logs/jobhunter.log
+```
+
+The file rotates by size (bounded backups) so it never grows unbounded. To get a
+push notification when a run fails, set an [ntfy](https://ntfy.sh) topic — leave
+it unset to disable notifications:
+
+```bash
+export JOBHUNTER_NTFY_TOPIC="my-jobhunter-alerts"
+```
 
 ## Development
 
@@ -101,5 +150,6 @@ implementation lands (Constitution VII).
 
 ## Current status
 
-Phase 2 (Foundational) complete: package installs, CLI dispatches, path
-resolution works. Next up is **US1** — the `jobhunter profile` flow.
+**US1 complete** — `jobhunter profile <resume.pdf>` turns a resume into a
+validated, atomically persisted `profile.json` (extract → structure via Claude →
+write). Next up is **US2** — the `jobhunter prefs` interview and validation.

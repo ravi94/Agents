@@ -12,6 +12,8 @@ from __future__ import annotations
 import argparse
 import sys
 from collections.abc import Sequence
+from datetime import UTC, datetime
+from pathlib import Path
 
 
 class CommandError(Exception):
@@ -23,6 +25,38 @@ def _not_implemented(command: str):
         raise CommandError(f"'{command}' is not implemented yet")
 
     return handler
+
+
+def _profile_handler(args: argparse.Namespace) -> int:
+    """Derive and persist the structured profile from a resume PDF (US1)."""
+    # Imported lazily so unrelated commands don't pay the pydantic/pypdf cost.
+    from jobhunter.llm.claude_cli import ClaudeCLIProvider
+    from jobhunter.llm.provider import LLMProviderError
+    from jobhunter.resume.extract import ResumeExtractionError
+    from jobhunter.resume.parser import parse_resume
+
+    resume_path = Path(args.resume)
+    provider = ClaudeCLIProvider(
+        filename=resume_path.name,
+        parsed_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    )
+    try:
+        profile = parse_resume(resume_path, provider)
+    except (ResumeExtractionError, LLMProviderError) as exc:
+        raise CommandError(str(exc)) from exc
+
+    from jobhunter import config
+
+    written = config.profile_path()
+    seniority = profile.seniority or "unknown"
+    roles = ", ".join(profile.roles) if profile.roles else "none detected"
+    print(
+        f"Profile written to {written}\n"
+        f"  skills: {len(profile.skills)}\n"
+        f"  seniority: {seniority}\n"
+        f"  roles: {roles}"
+    )
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -37,7 +71,7 @@ def build_parser() -> argparse.ArgumentParser:
         "profile", help="Derive and persist the structured profile from a resume PDF."
     )
     p_profile.add_argument("resume", metavar="resume.pdf", help="Path to a text-extractable PDF.")
-    p_profile.set_defaults(func=_not_implemented("profile"))
+    p_profile.set_defaults(func=_profile_handler)
 
     # prefs init|validate  (US2 -> T021)
     p_prefs = subparsers.add_parser("prefs", help="Manage user preferences (prefs.yaml).")
@@ -70,9 +104,21 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    # Observability (Constitution Principle VIII): every run gets a correlation
+    # id, a rotating log, and an ntfy error signal on failure.
+    from jobhunter import obs
+
+    run_id = obs.configure_run_logging()
+    log = obs.get_logger("cli")
+    log.info("run start command=%s run_id=%s", args.command, run_id)
     try:
-        return args.func(args)
+        rc = args.func(args)
+        log.info("run end command=%s exit=%s", args.command, rc)
+        return rc
     except CommandError as exc:
+        log.error("run failed command=%s error=%s", args.command, type(exc).__name__)
+        obs.notify_error(f"jobhunter {args.command} failed: {exc}")
         print(f"error: {exc}", file=sys.stderr)
         return 1
 

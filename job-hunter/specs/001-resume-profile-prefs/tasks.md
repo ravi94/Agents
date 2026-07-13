@@ -59,12 +59,12 @@ description: "Task list for Resume Profile & Preferences Foundation (M1)"
 
 ### Implementation for User Story 1
 
-- [ ] T011 [US1] Implement PDF text extraction in `src/jobhunter/resume/extract.py` (`pypdf`), raising a clear error on empty/near-empty output (image-only) — satisfies T008.
-- [ ] T012 [US1] Implement the `Profile` model + atomic JSON persistence (load/save to `profile.json`) in `src/jobhunter/models/profile.py` per `contracts/profile.schema.json` — satisfies T009.
-- [ ] T013 [P] [US1] Define the `LLMProvider` interface (`structure_resume(text) -> Profile`) in `src/jobhunter/llm/provider.py` (the swap seam for Ollama, Constitution I).
-- [ ] T014 [US1] Implement the Claude Code CLI provider in `src/jobhunter/llm/claude_cli.py`: invoke `claude -p ... --output-format json` via `subprocess`, parse/validate the JSON into a `Profile`, handle timeouts/non-zero exit/malformed output with clear errors (depends on T012, T013).
-- [ ] T015 [US1] Implement the parser orchestration in `src/jobhunter/resume/parser.py`: extract → provider.structure_resume → validate → atomic write; on any failure, do not write and leave existing profile intact (depends on T011, T012, T013) — satisfies T010.
-- [ ] T016 [US1] Wire the `profile <resume.pdf>` command in `src/jobhunter/cli.py` to the parser; print skills count / seniority / roles summary and the written path; non-zero exit + actionable error on failure (per `contracts/cli.md`).
+- [X] T011 [US1] Implement PDF text extraction in `src/jobhunter/resume/extract.py` (`pypdf`), raising a clear error on empty/near-empty output (image-only) — satisfies T008.
+- [X] T012 [US1] Implement the `Profile` model + atomic JSON persistence (load/save to `profile.json`) in `src/jobhunter/models/profile.py` per `contracts/profile.schema.json` — satisfies T009.
+- [X] T013 [P] [US1] Define the `LLMProvider` interface (`structure_resume(text) -> Profile`) in `src/jobhunter/llm/provider.py` (the swap seam for Ollama, Constitution I).
+- [X] T014 [US1] Implement the Claude Code CLI provider in `src/jobhunter/llm/claude_cli.py`: invoke `claude -p ... --output-format json` via `subprocess`, parse/validate the JSON into a `Profile`, handle timeouts/non-zero exit/malformed output with clear errors (depends on T012, T013).
+- [X] T015 [US1] Implement the parser orchestration in `src/jobhunter/resume/parser.py`: extract → provider.structure_resume → validate → atomic write; on any failure, do not write and leave existing profile intact (depends on T011, T012, T013) — satisfies T010.
+- [X] T016 [US1] Wire the `profile <resume.pdf>` command in `src/jobhunter/cli.py` to the parser; print skills count / seniority / roles summary and the written path; non-zero exit + actionable error on failure (per `contracts/cli.md`).
 
 **Checkpoint**: User Story 1 fully functional and independently testable (MVP).
 
@@ -108,6 +108,20 @@ description: "Task list for Resume Profile & Preferences Foundation (M1)"
 - [ ] T025 [US3] Wire the `db init` command in `src/jobhunter/cli.py` to `init_db()`; print the `jobs.db` path and schema version per `contracts/cli.md`.
 
 **Checkpoint**: All three user stories independently functional.
+
+---
+
+## Phase 5b: Observability (Constitution Principle VIII — cross-cutting)
+
+**Purpose**: Every feature ships observable — a run correlation id threaded
+through structured logs, tracing (metadata only) of LLM/external calls, a
+rotating log file, and an ntfy error signal on failure. Foundational infra is
+shared; each story wires its own calls/run signals.
+
+- [X] T029 [Obs] Foundational observability module in `src/jobhunter/obs.py` (run-id logging filter, `RotatingFileHandler` under `logs/`, `trace()` context manager, `notify_error()` ntfy hook) + `config.log_path()`/`logs_dir()` — tests in `tests/unit/test_obs.py` (write first, confirm failing).
+- [X] T030 [US1] Wire tracing into the profile flow: trace `resume.extract` and `llm.structure_resume` in `resume/parser.py`; configure run logging + run start/end + ntfy-on-error in `cli.py` `main()`.
+- [ ] T031 [US2] Wire observability into `prefs init`/`validate`: trace the interview + validation, log per-run outcome, ntfy on failure (lands with T019–T021).
+- [ ] T032 [US3] Wire observability into `db init`: trace schema creation, log the outcome/version, ntfy on failure (lands with T024–T025).
 
 ---
 

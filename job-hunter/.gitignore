@@ -1,0 +1,3 @@
+# App data home (JOBHUNTER_HOME=./data) — track the folder, not its contents
+/data/*
+!/data/.gitkeep

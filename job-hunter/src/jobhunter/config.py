@@ -17,6 +17,8 @@ DEFAULT_DIRNAME = ".job-hunter"
 PROFILE_FILENAME = "profile.json"
 PREFS_FILENAME = "prefs.yaml"
 DB_FILENAME = "jobs.db"
+LOGS_DIRNAME = "logs"
+LOG_FILENAME = "jobhunter.log"
 
 
 def get_home() -> Path:
@@ -51,3 +53,13 @@ def prefs_path() -> Path:
 def db_path() -> Path:
     """Path to the SQLite job store (``jobs.db``)."""
     return get_home() / DB_FILENAME
+
+
+def logs_dir() -> Path:
+    """Directory holding the (rotating) run logs."""
+    return get_home() / LOGS_DIRNAME
+
+
+def log_path() -> Path:
+    """Path to the active run log file (``logs/jobhunter.log``)."""
+    return logs_dir() / LOG_FILENAME
