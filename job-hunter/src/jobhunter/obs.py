@@ -52,6 +52,16 @@ def new_run_id() -> str:
     return uuid.uuid4().hex[:12]
 
 
+def current_run_id() -> str:
+    """Return the active run's correlation id (the one every log line carries).
+
+    ``"-"`` if no run has been configured yet (e.g. library use outside the
+    CLI). Callers that mint their own id instead of using this one produce a
+    result that can't be grepped out of the log by the id it's shown under.
+    """
+    return _current_run_id
+
+
 def get_logger(name: str | None = None) -> logging.Logger:
     """Return the jobhunter logger (or a named child of it)."""
     return logging.getLogger(_LOGGER_NAME if not name else f"{_LOGGER_NAME}.{name}")

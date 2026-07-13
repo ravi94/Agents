@@ -12,6 +12,10 @@ src/jobhunter.egg-info/entry_points.txt
 src/jobhunter.egg-info/requires.txt
 src/jobhunter.egg-info/top_level.txt
 src/jobhunter/discovery/__init__.py
+src/jobhunter/discovery/dedup.py
+src/jobhunter/discovery/normalize.py
+src/jobhunter/discovery/query.py
+src/jobhunter/discovery/run.py
 src/jobhunter/llm/__init__.py
 src/jobhunter/llm/claude_cli.py
 src/jobhunter/llm/provider.py
@@ -24,7 +28,9 @@ src/jobhunter/resume/__init__.py
 src/jobhunter/resume/extract.py
 src/jobhunter/resume/parser.py
 src/jobhunter/sources/__init__.py
+src/jobhunter/sources/adzuna.py
 src/jobhunter/sources/base.py
 src/jobhunter/sources/cache.py
+src/jobhunter/sources/jsearch.py
 src/jobhunter/store/__init__.py
 src/jobhunter/store/db.py

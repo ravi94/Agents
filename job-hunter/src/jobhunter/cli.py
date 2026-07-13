@@ -119,6 +119,7 @@ def _discover_handler(args: argparse.Namespace) -> int:
     from jobhunter.discovery.run import run_discovery
     from jobhunter.models.preferences import load_preferences
     from jobhunter.models.profile import load_profile
+    from jobhunter.sources.adzuna import AdzunaSource
     from jobhunter.sources.jsearch import JSearchSource
 
     profile_path = config.profile_path()
@@ -137,9 +138,8 @@ def _discover_handler(args: argparse.Namespace) -> int:
     except ValidationError as exc:
         raise CommandError(f"invalid {prefs_path}: {_format_validation_error(exc)}") from exc
 
-    # Registration = one factory entry per source (FR-002); Adzuna joins here
-    # in US3 with no other orchestrator change.
-    source_factories = {"jsearch": JSearchSource}
+    # Registration = one factory entry per source (FR-002).
+    source_factories = {"jsearch": JSearchSource, "adzuna": AdzunaSource}
     selected_names = args.source or list(source_factories)
     unknown = [name for name in selected_names if name not in source_factories]
     if unknown:
@@ -236,6 +236,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    from jobhunter import config
+
+    config.load_env()
+
     parser = build_parser()
     args = parser.parse_args(argv)
 

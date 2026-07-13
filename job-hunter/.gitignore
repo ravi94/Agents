@@ -1,3 +1,6 @@
 # App data home (JOBHUNTER_HOME=./data) — track the folder, not its contents
 /data/*
 !/data/.gitkeep
+
+# Local credentials (JSEARCH_API_KEY, ADZUNA_APP_ID/KEY, ...) — never commit
+.env

@@ -11,6 +11,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from dotenv import find_dotenv, load_dotenv
+
 ENV_HOME = "JOBHUNTER_HOME"
 DEFAULT_DIRNAME = ".job-hunter"
 
@@ -20,6 +22,19 @@ DB_FILENAME = "jobs.db"
 LOGS_DIRNAME = "logs"
 LOG_FILENAME = "jobhunter.log"
 CACHE_DIRNAME = "cache"
+
+
+def load_env() -> None:
+    """Populate ``os.environ`` from a ``.env`` file, if one is found.
+
+    Searches the current directory and its parents (``python-dotenv``'s
+    default). Real environment variables always win — a value already set in
+    the shell is never overridden by ``.env`` (lets `export FOO=bar` still
+    take precedence for one-off overrides).
+    """
+    dotenv_path = find_dotenv(usecwd=True)
+    if dotenv_path:
+        load_dotenv(dotenv_path, override=False)
 
 
 def get_home() -> Path:

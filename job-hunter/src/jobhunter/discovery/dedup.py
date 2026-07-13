@@ -44,24 +44,32 @@ def compute_id(
 
 
 def dedup_within_run(jobs: list[dict]) -> list[dict]:
-    """Collapse duplicate ids in one batch, keeping the richer payload."""
-    best_by_id: dict = {}
+    """Collapse duplicate postings in one batch, keeping the richer payload.
+
+    Grouped by `dedup_key` when a normalizer recorded one (falling back to
+    `id`), so a JSearch and Adzuna copy of the same role — which resolve to
+    different `id`s but the same composite `dedup_key` — collapse to one
+    record even though neither shares the other's source id
+    (contracts/source_mapping.md "Cross-source dedup").
+    """
+    best_by_key: dict = {}
     order: list = []
 
     for job in jobs:
         job_id = job.get("id")
         if not job_id:
             continue
+        key = job.get("dedup_key") or job_id
 
-        if job_id not in best_by_id:
-            best_by_id[job_id] = job
-            order.append(job_id)
+        if key not in best_by_key:
+            best_by_key[key] = job
+            order.append(key)
             continue
 
-        current = best_by_id[job_id]
+        current = best_by_key[key]
         current_richness = sum(1 for v in current.values() if v is not None)
         candidate_richness = sum(1 for v in job.values() if v is not None)
         if candidate_richness > current_richness:
-            best_by_id[job_id] = job
+            best_by_key[key] = job
 
-    return [best_by_id[job_id] for job_id in order]
+    return [best_by_key[key] for key in order]

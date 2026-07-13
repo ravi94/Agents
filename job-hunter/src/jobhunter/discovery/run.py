@@ -16,18 +16,18 @@ from dataclasses import dataclass, field
 
 from jobhunter import obs
 from jobhunter.discovery.dedup import dedup_within_run
-from jobhunter.discovery.normalize import normalize_jsearch
+from jobhunter.discovery.normalize import normalize_adzuna, normalize_jsearch
 from jobhunter.discovery.query import derive_queries
 from jobhunter.models.preferences import Preferences
 from jobhunter.models.profile import Profile
 from jobhunter.sources.base import JobSource, RawPosting, SourceError
 from jobhunter.store import db
 
-# Per-source raw-posting -> canonical-Job mapping. Adding a source (e.g. the
-# future Adzuna adapter, T031/T032) means adding one entry here — no other
-# orchestrator change (FR-002).
+# Per-source raw-posting -> canonical-Job mapping. Adding a source means
+# adding one entry here — no other orchestrator change (FR-002).
 NORMALIZERS: dict[str, Callable[[RawPosting], dict | None]] = {
     "jsearch": normalize_jsearch,
+    "adzuna": normalize_adzuna,
 }
 
 
@@ -52,7 +52,11 @@ def run_discovery(
     dry_run: bool = False,
 ) -> RunSummary:
     """Run one discovery pass over `sources` and return its summary."""
-    summary = RunSummary(run_id=obs.new_run_id())
+    # Reuse the CLI's already-configured correlation id (obs.current_run_id())
+    # so the printed summary and every log line for this run agree — a fresh
+    # id here would desync them (SC-005). "-" outside a configured run (e.g.
+    # library/test use) matches what the log filter would show too.
+    summary = RunSummary(run_id=obs.current_run_id())
     log = obs.get_logger("discovery")
 
     queries = derive_queries(profile, prefs)
@@ -82,16 +86,20 @@ def run_discovery(
             else:
                 normalized.append(job)
 
-    for job in dedup_within_run(normalized):
-        existing = db.get_job(job["id"])
-        if existing is not None:
-            summary.seen += 1
-            if not dry_run:
-                db.touch_last_seen(job["id"])
-        else:
-            summary.new += 1
-            if not dry_run:
-                db.upsert_job(job)
+    with obs.trace("discovery.persist", logger=log):
+        for job in dedup_within_run(normalized):
+            # dedup_key is a pipeline-internal cross-source match key, not a
+            # persisted Job column (data-model.md) — drop it before storing.
+            job = {k: v for k, v in job.items() if k != "dedup_key"}
+            existing = db.get_job(job["id"])
+            if existing is not None:
+                summary.seen += 1
+                if not dry_run:
+                    db.touch_last_seen(job["id"])
+            else:
+                summary.new += 1
+                if not dry_run:
+                    db.upsert_job(job)
 
     log.info(
         "discover: run complete run_id=%s fetched=%d new=%d seen=%d skipped=%d failures=%d",

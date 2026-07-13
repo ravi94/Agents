@@ -54,11 +54,11 @@ description: "Task list for Job Discovery, Normalization & Dedup (M2)"
 
 ### Tests for User Story 1 (write first, confirm failing) ⚠️
 
-- [ ] T009 [P] [US1] Unit test query derivation in `tests/unit/test_query.py`: `profile.roles` × `prefs.locations` builds queries; an optional `prefs.search.keywords` override replaces the profile keywords; empty profile+prefs → zero queries (clean no-op).
-- [ ] T010 [P] [US1] Unit test JSearch normalization in `tests/unit/test_normalize.py`: `jsearch_response.json` maps to canonical `Job` fields per `contracts/source_mapping.md`; absent optional fields (salary, etc.) are null — never fabricated (FR-010); a posting missing title+company is skipped and counted (FR-011).
-- [ ] T011 [P] [US1] Unit test work-mode classification in `tests/unit/test_work_mode.py`: explicit remote flag → `remote`; text keywords → `hybrid`/`onsite`; no signal → `unknown` (never guessed) (FR-009).
-- [ ] T012 [P] [US1] Unit test idempotency key + within-run dedup in `tests/unit/test_dedup.py`: source-id vs normalized `title|company|city` composite; duplicate postings in one batch collapse to one; unusable-id postings are skipped (FR-011, FR-012, FR-013).
-- [ ] T013 [P] [US1] Integration test single-source discovery in `tests/integration/test_discover_run.py` using a fixture `JobSource` (no live call): end-to-end fetch→normalize→dedup→persist against a temp `JOBHUNTER_HOME`; asserts new rows with `state=new`/`first_seen`/`last_seen`, null `score`, and a run summary of `fetched`/`new`/`skipped`.
+- [x] T009 [P] [US1] Unit test query derivation in `tests/unit/test_query.py`: `profile.roles` × `prefs.locations` builds queries; an optional `prefs.search.keywords` override replaces the profile keywords; empty profile+prefs → zero queries (clean no-op).
+- [x] T010 [P] [US1] Unit test JSearch normalization in `tests/unit/test_normalize.py`: `jsearch_response.json` maps to canonical `Job` fields per `contracts/source_mapping.md`; absent optional fields (salary, etc.) are null — never fabricated (FR-010); a posting missing title+company is skipped and counted (FR-011).
+- [x] T011 [P] [US1] Unit test work-mode classification in `tests/unit/test_work_mode.py`: explicit remote flag → `remote`; text keywords → `hybrid`/`onsite`; no signal → `unknown` (never guessed) (FR-009).
+- [x] T012 [P] [US1] Unit test idempotency key + within-run dedup in `tests/unit/test_dedup.py`: source-id vs normalized `title|company|city` composite; duplicate postings in one batch collapse to one; unusable-id postings are skipped (FR-011, FR-012, FR-013).
+- [x] T013 [P] [US1] Integration test single-source discovery in `tests/integration/test_discover_run.py` using a fixture `JobSource` (no live call): end-to-end fetch→normalize→dedup→persist against a temp `JOBHUNTER_HOME`; asserts new rows with `state=new`/`first_seen`/`last_seen`, null `score`, and a run summary of `fetched`/`new`/`skipped`.
 
 ### Implementation for User Story 1
 
@@ -84,14 +84,14 @@ description: "Task list for Job Discovery, Normalization & Dedup (M2)"
 
 ### Tests for User Story 2 (write first, confirm failing) ⚠️
 
-- [ ] T023 [P] [US2] Unit test `touch_last_seen` in `tests/unit/test_store_touch_last_seen.py`: advances `last_seen`; leaves `first_seen`, `state`, `updated_at`, and content columns unchanged; no-op (returns False) when the id is absent (FR-015).
-- [ ] T024 [P] [US2] Integration test idempotent re-run in `tests/integration/test_discover_idempotent.py`: a second run over the same fixture adds zero duplicate rows; already-seen rows get `last_seen` advanced with `first_seen`/`state` preserved; a job pre-set to `interested` is not reset to `new`; the summary reports `seen` vs `new` (FR-013–015, SC-002).
+- [x] T023 [P] [US2] Unit test `touch_last_seen` in `tests/unit/test_store_touch_last_seen.py`: advances `last_seen`; leaves `first_seen`, `state`, `updated_at`, and content columns unchanged; no-op (returns False) when the id is absent (FR-015).
+- [x] T024 [P] [US2] Integration test idempotent re-run in `tests/integration/test_discover_idempotent.py`: a second run over the same fixture adds zero duplicate rows; already-seen rows get `last_seen` advanced with `first_seen`/`state` preserved; a job pre-set to `interested` is not reset to `new`; the summary reports `seen` vs `new` (FR-013–015, SC-002).
 
 ### Implementation for User Story 2
 
-- [ ] T025 [US2] Implement `touch_last_seen(id, path=None)` in `src/jobhunter/store/db.py`: advance `last_seen` only, preserving `first_seen`/`state`/`updated_at`; no-op if absent — satisfies T023 (reuses M1 `upsert_job` unchanged for the new path).
-- [ ] T026 [US2] Extend dedup/persist across runs in `src/jobhunter/discovery/dedup.py` and `src/jobhunter/discovery/run.py`: existing id → `touch_last_seen` (seen path), new id → `upsert_job`; tally `new` vs `seen` in the `RunSummary` — satisfies T024.
-- [ ] T027 [US2] Extend observability: include `seen` vs `new` counts in the per-run summary and trace persist outcomes (metadata only) in `run.py`.
+- [x] T025 [US2] Implement `touch_last_seen(id, path=None)` in `src/jobhunter/store/db.py`: advance `last_seen` only, preserving `first_seen`/`state`/`updated_at`; no-op if absent — satisfies T023 (reuses M1 `upsert_job` unchanged for the new path).
+- [x] T026 [US2] Extend dedup/persist across runs in `src/jobhunter/discovery/dedup.py` and `src/jobhunter/discovery/run.py`: existing id → `touch_last_seen` (seen path), new id → `upsert_job`; tally `new` vs `seen` in the `RunSummary` — satisfies T024.
+- [x] T027 [US2] Extend observability: include `seen` vs `new` counts in the per-run summary and trace persist outcomes (metadata only) in `run.py`.
 
 **Checkpoint**: Discovery is idempotent across runs — a monitor, not a repeated search. US1 + US2 both work.
 
@@ -105,16 +105,16 @@ description: "Task list for Job Discovery, Normalization & Dedup (M2)"
 
 ### Tests for User Story 3 (write first, confirm failing) ⚠️
 
-- [ ] T028 [P] [US3] Unit test Adzuna normalization in `tests/unit/test_normalize_adzuna.py`: `adzuna_response.json` maps to canonical `Job`; work mode is text-inferred (no explicit flag); the stable Adzuna id is used while a composite is still recorded for cross-source collapse (contracts/source_mapping.md).
-- [ ] T029 [P] [US3] Unit test cross-source dedup in `tests/unit/test_dedup_cross_source.py` using `source_dupe_pair.json`: the same role from both sources collapses to one record, preferring the richer payload deterministically (FR-013, SC-004).
-- [ ] T030 [P] [US3] Integration test resilience in `tests/integration/test_discover_resilience.py`: two fixture sources, one raising `SourceError` → run completes exit 0, the healthy source's new jobs are stored, and the failed source is recorded in the summary; partial results are a success (FR-017–018, SC-003).
+- [x] T028 [P] [US3] Unit test Adzuna normalization in `tests/unit/test_normalize_adzuna.py`: `adzuna_response.json` maps to canonical `Job`; work mode is text-inferred (no explicit flag); the stable Adzuna id is used while a composite is still recorded for cross-source collapse (contracts/source_mapping.md).
+- [x] T029 [P] [US3] Unit test cross-source dedup in `tests/unit/test_dedup_cross_source.py` using `source_dupe_pair.json`: the same role from both sources collapses to one record, preferring the richer payload deterministically (FR-013, SC-004).
+- [x] T030 [P] [US3] Integration test resilience in `tests/integration/test_discover_resilience.py`: two fixture sources, one raising `SourceError` → run completes exit 0, the healthy source's new jobs are stored, and the failed source is recorded in the summary; partial results are a success (FR-017–018, SC-003).
 
 ### Implementation for User Story 3
 
-- [ ] T031 [P] [US3] Implement the Adzuna India source adapter in `src/jobhunter/sources/adzuna.py`: build requests from `SearchQuery`, route through `http.py` + cache, respect the query budget, raise `SourceError` on failure, and skip itself when `ADZUNA_APP_ID`/`ADZUNA_APP_KEY` are absent.
-- [ ] T032 [US3] Implement Adzuna payload → canonical `Job` normalization in `src/jobhunter/discovery/normalize.py` (stable source id + recorded composite for cross-source collapse) — satisfies T028.
-- [ ] T033 [US3] Extend the orchestrator in `src/jobhunter/discovery/run.py` and cross-source dedup in `src/jobhunter/discovery/dedup.py`: iterate all configured sources with per-source try/except isolation, collapse cross-source duplicates, and record per-source counts/failures in the `RunSummary` — satisfies T029, T030.
-- [ ] T034 [US3] Extend observability: record each source's outcome (ok/failed + reason, metadata only) in the summary and traces; ensure a dead source is logged, traced, and skipped — never escalated to a whole-run failure (FR-017/024).
+- [x] T031 [P] [US3] Implement the Adzuna India source adapter in `src/jobhunter/sources/adzuna.py`: build requests from `SearchQuery`, route through `http.py` + cache, respect the query budget, raise `SourceError` on failure, and skip itself when `ADZUNA_APP_ID`/`ADZUNA_APP_KEY` are absent.
+- [x] T032 [US3] Implement Adzuna payload → canonical `Job` normalization in `src/jobhunter/discovery/normalize.py` (stable source id + recorded composite for cross-source collapse) — satisfies T028.
+- [x] T033 [US3] Extend the orchestrator in `src/jobhunter/discovery/run.py` and cross-source dedup in `src/jobhunter/discovery/dedup.py`: iterate all configured sources with per-source try/except isolation, collapse cross-source duplicates, and record per-source counts/failures in the `RunSummary` — satisfies T029, T030.
+- [x] T034 [US3] Extend observability: record each source's outcome (ok/failed + reason, metadata only) in the summary and traces; ensure a dead source is logged, traced, and skipped — never escalated to a whole-run failure (FR-017/024).
 
 **Checkpoint**: Multi-source discovery is dependable under partial failure. All three user stories independently functional.
 
@@ -124,9 +124,9 @@ description: "Task list for Job Discovery, Normalization & Dedup (M2)"
 
 **Purpose**: Validation and finishing touches spanning stories.
 
-- [ ] T035 [P] Update `README.md`: the `jobhunter discover` command, source credential env vars (`JSEARCH_API_KEY`, `ADZUNA_APP_ID`/`ADZUNA_APP_KEY`), and the free-tier/caching note.
-- [ ] T036 [P] Add CLI error/exit-code tests for `discover` in `tests/unit/test_cli_discover.py`: missing profile/prefs errors; no-usable-query is a clean exit 0 no-op; whole-run failure exits non-zero (per contracts/cli.md).
-- [ ] T037 Run the [quickstart.md](./quickstart.md) validation end-to-end with fixture sources and confirm SC-001…SC-007 are met; fix any gaps.
+- [x] T035 [P] Update `README.md`: the `jobhunter discover` command, source credential env vars (`JSEARCH_API_KEY`, `ADZUNA_APP_ID`/`ADZUNA_APP_KEY`), and the free-tier/caching note.
+- [x] T036 [P] Add CLI error/exit-code tests for `discover` in `tests/unit/test_cli_discover.py`: missing profile/prefs errors; no-usable-query is a clean exit 0 no-op; whole-run failure exits non-zero (per contracts/cli.md).
+- [x] T037 Run the [quickstart.md](./quickstart.md) validation end-to-end with fixture sources and confirm SC-001…SC-007 are met; fix any gaps.
 
 ---
 

@@ -2,8 +2,9 @@
 
 Local job-search copilot. Turns a resume PDF into a persisted structured
 profile (**M1**), lets you own a hand-editable `prefs.yaml` (**M1**), and now
-discovers, normalizes, and dedups job postings into a durable SQLite store
-(**M2**, US1).
+discovers, normalizes, and dedups job postings from multiple sources into a
+durable SQLite store, resiliently — a source outage never fails the run
+(**M2**, complete).
 
 All state lives under a local app data directory — `~/.job-hunter/` by default,
 or wherever `JOBHUNTER_HOME` points.
@@ -69,7 +70,7 @@ You can also run it as a module without the console script:
 | `jobhunter prefs init [--force]` | One-time guided interview → write `prefs.yaml`. Refuses to overwrite without `--force`. | ✅ Implemented (US2) |
 | `jobhunter prefs validate` | Validate `prefs.yaml` against the schema. | ✅ Implemented (US2) |
 | `jobhunter db init` | Create the SQLite job store (`jobs.db`) if absent; idempotent. Prints the path and schema version. | ✅ Implemented (US3) |
-| `jobhunter discover [--source NAME]... [--dry-run]` | Query job sources, normalize, dedup, and persist new postings into `jobs.db`. | ✅ Implemented (M2 US1) |
+| `jobhunter discover [--source NAME]... [--dry-run]` | Query job sources, normalize, dedup, and persist new postings into `jobs.db`. | ✅ Implemented (M2) |
 
 #### Building your profile
 
@@ -117,25 +118,42 @@ dedups within the run and against the store, and persists genuinely new jobs
 (`state=new`, `first_seen`/`last_seen` stamped, no scoring yet). Requires
 `profile.json` and `prefs.yaml` to already exist:
 
+Source credentials are read from a `.env` file (loaded automatically from the
+current directory or a parent) or from real exported environment variables —
+whichever is set wins, with exported variables taking precedence over `.env`:
+
+```bash
+cp .env.example .env
+# then edit .env and fill in the keys you have
+```
+
 ```bash
 export JOBHUNTER_HOME="$(pwd)/data"
-export JSEARCH_API_KEY="your-rapidapi-jsearch-key"   # optional; source is skipped if unset
 .venv/bin/jobhunter discover
 # -> Discovery run <run-id> complete.
 #      fetched: N   new: N   seen: N   skipped: N
 #      sources:
 #        jsearch  ok
+#        adzuna   ok
 ```
 
 - `--dry-run` — fetch, normalize, and dedup, but write nothing to the store (safe to inspect).
-- `--source NAME` — restrict the run to one source (repeatable). Default: all configured sources.
-- A missing source credential (e.g. `JSEARCH_API_KEY`) skips that source and
-  reports it as failed in the summary — it does **not** fail the run (exit
-  code stays `0`).
+- `--source NAME` — restrict the run to one source (repeatable, e.g.
+  `--source jsearch --source adzuna`). Default: all configured sources.
+- A missing source credential (e.g. `JSEARCH_API_KEY`, or either
+  `ADZUNA_APP_ID`/`ADZUNA_APP_KEY`) skips that source and reports it as failed
+  in the summary — it does **not** fail the run (exit code stays `0`). The
+  same holds if a source errors mid-run (network failure, rate-limited after
+  bounded retries): the run completes with the healthy sources' results and
+  lists the failure per-source.
+- The same role posted on both sources collapses into a single stored record
+  (preferring whichever payload has more fields filled in), so running with
+  both sources active doesn't double your job count.
 - Responses are cached under `data/cache/` (~6h TTL by default) so same-day
   re-runs don't burn free-tier API quota.
-- Currently implemented source: **JSearch** (RapidAPI job search aggregator,
-  needs `JSEARCH_API_KEY`). Adzuna is planned but not yet implemented.
+- Implemented sources: **JSearch** (RapidAPI job search aggregator, needs
+  `JSEARCH_API_KEY`) and **Adzuna** (India job search, needs `ADZUNA_APP_ID` +
+  `ADZUNA_APP_KEY`).
 
 **Getting a `JSEARCH_API_KEY`:**
 
@@ -146,10 +164,18 @@ export JSEARCH_API_KEY="your-rapidapi-jsearch-key"   # optional; source is skipp
 3. On the API's "Endpoints" tab, copy the `X-RapidAPI-Key` value shown in the
    sample request headers (it's the same key across all RapidAPI APIs you're
    subscribed to).
-4. `export JSEARCH_API_KEY="<that value>"` before running `jobhunter discover`.
+4. Set `JSEARCH_API_KEY="<that value>"` in `.env` before running `jobhunter discover`.
 
-Without this key, `discover` still runs — it just reports the `jsearch` source
-as failed/unavailable in the summary and moves on (exit code `0`).
+**Getting `ADZUNA_APP_ID` / `ADZUNA_APP_KEY`:**
+
+1. Sign up / log in at the [Adzuna Developer portal](https://developer.adzuna.com/).
+2. Register an app to get an `App ID` and `App Key` — the free tier's monthly
+   call quota is enough for occasional manual `discover` runs.
+3. Set `ADZUNA_APP_ID="<app id>"` and `ADZUNA_APP_KEY="<app key>"` in `.env`
+   before running `jobhunter discover`.
+
+Without these keys, `discover` still runs — it just reports the corresponding
+source(s) as failed/unavailable in the summary and moves on (exit code `0`).
 
 ### App data location
 
@@ -214,25 +240,7 @@ before the implementation lands (Constitution VII).
 
 ## Current status
 
-**M1 (US1, US2 & US3) complete. M2 US1 (single-source discovery) complete.**
+**M1 (US1, US2 & US3) complete. M2 (US1, US2 & US3 — single-source discovery, idempotent monitor, and Adzuna + multi-source resilience) complete.**
 
-M1 — resume/profile/preferences foundation:
-
-- **US1** — `jobhunter profile <resume.pdf>` turns a resume into a validated,
-  atomically persisted `profile.json` (extract → structure via Claude → write).
-- **US2** — `jobhunter prefs init` seeds a hand-editable `prefs.yaml` via a
-  guided interview; `jobhunter prefs validate` checks it (field-named errors,
-  weight-sum warnings).
-- **US3** — `jobhunter db init` creates the durable SQLite job store
-  (`jobs.db`) idempotently, with the full `jobs` schema (`user_version`) that
-  later milestones (discovery, scoring, triage) populate.
-
-M2 — job discovery, normalization & dedup (see
-[specs/002-job-discovery-dedup/](specs/002-job-discovery-dedup/)):
-
-- **US1 (MVP)** — `jobhunter discover` fetches from JSearch, normalizes each
-  posting into the canonical `Job` shape, classifies work mode, dedups within
-  the run, and persists genuinely new jobs (`state=new`) into `jobs.db`.
-  Re-running is idempotent: already-seen jobs only advance `last_seen`.
-- **US2/US3** (idempotent-monitor polish, Adzuna + multi-source resilience) —
-  not yet implemented.
+See [CHANGELOG.md](CHANGELOG.md) for the full per-user-story history, and
+[specs/](specs/) for the specs, plans, and task lists behind each milestone.
