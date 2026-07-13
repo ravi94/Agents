@@ -36,6 +36,7 @@ EXPECTED_COLUMNS = {
     "first_seen",
     "last_seen",
     "updated_at",
+    "alerted_at",
 }
 
 

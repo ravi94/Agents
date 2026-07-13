@@ -1,0 +1,18 @@
+{
+  "full_name": "Asha Verma",
+  "skills": ["Python", "Django", "PostgreSQL", "AWS", "Kubernetes", "System Design"],
+  "experience": [
+    {
+      "company": "Northwind Systems",
+      "title": "Senior Backend Engineer",
+      "start": "2021-01",
+      "end": null,
+      "summary": "Led the payments platform migration to microservices."
+    }
+  ],
+  "seniority": "senior",
+  "roles": ["Backend Engineer", "Staff Engineer"],
+  "total_years_experience": 7.5,
+  "source_resume_filename": "asha_verma_resume.pdf",
+  "parsed_at": "2026-06-01T10:00:00+00:00"
+}

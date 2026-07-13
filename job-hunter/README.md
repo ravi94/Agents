@@ -233,14 +233,22 @@ export JOBHUNTER_NTFY_TOPIC="my-jobhunter-alerts"
 ```
 
 Development is spec- and test-driven — see
-[specs/001-resume-profile-prefs/](specs/001-resume-profile-prefs/) (M1) and
-[specs/002-job-discovery-dedup/](specs/002-job-discovery-dedup/) (M2) for the
+[specs/001-resume-profile-prefs/](specs/001-resume-profile-prefs/) (M1),
+[specs/002-job-discovery-dedup/](specs/002-job-discovery-dedup/) (M2), and
+[specs/003-job-scoring-filtering/](specs/003-job-scoring-filtering/) (M3) for the
 specs, plans, and task lists. Tests are written first and observed to fail
 before the implementation lands (Constitution VII).
 
 ## Current status
 
 **M1 (US1, US2 & US3) complete. M2 (US1, US2 & US3 — single-source discovery, idempotent monitor, and Adzuna + multi-source resilience) complete.**
+
+**M3 (job scoring, filtering & alerting) in progress** — the store is on schema
+v2 (`alerted_at`), the local Ollama embeddings client is in, and the US1 scoring
+engine (hard filters + composite scorer + `filter → score → persist`
+orchestrator) is built and tested. The `jobhunter score` CLI command that
+exposes it is not yet wired; running it end-to-end (and its optional
+local-Ollama `scope` component) will be documented here when it lands.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full per-user-story history, and
 [specs/](specs/) for the specs, plans, and task lists behind each milestone.

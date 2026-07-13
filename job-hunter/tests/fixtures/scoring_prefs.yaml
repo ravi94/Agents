@@ -1,0 +1,24 @@
+hard_filters:
+  locations:
+    - Bangalore
+    - Bengaluru
+  work_modes:
+    - remote
+    - hybrid
+  company_types_allow:
+    - startup
+    - midsize
+  company_types_deny:
+    - staffing_agency
+  comp_floor_lpa: 25
+  seniority_floor: mid
+soft_weights:
+  work_life_balance: 0.2
+  stability: 0.2
+  scope: 0.35
+  comp: 0.25
+alerting:
+  score_threshold: 0.75
+  max_alerts_per_run: 5
+search:
+  keywords: []

@@ -18,7 +18,7 @@ from pathlib import Path
 from jobhunter import config
 
 # Bump when the `jobs` schema changes; drives PRAGMA user_version + migrations.
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 # Full Job Record shape (data-model.md). Order is the canonical column order.
 COLUMNS: tuple[str, ...] = (
@@ -42,11 +42,13 @@ COLUMNS: tuple[str, ...] = (
     "first_seen",
     "last_seen",
     "updated_at",
+    "alerted_at",
 )
 
-# Columns a caller may set directly. Identity and the store-managed audit
-# timestamps are handled by the store itself, never taken verbatim from input.
-_MANAGED = frozenset({"id", "first_seen", "last_seen", "updated_at"})
+# Columns a caller may set directly. Identity, the store-managed audit
+# timestamps, and `alerted_at` (write-once, stamped only by the alert step)
+# are handled by the store itself, never taken verbatim from input.
+_MANAGED = frozenset({"id", "first_seen", "last_seen", "updated_at", "alerted_at"})
 _SETTABLE = frozenset(COLUMNS) - _MANAGED
 
 _CREATE_TABLE = """
@@ -70,7 +72,8 @@ CREATE TABLE IF NOT EXISTS jobs (
     state           TEXT NOT NULL DEFAULT 'new',
     first_seen      TEXT NOT NULL,
     last_seen       TEXT NOT NULL,
-    updated_at      TEXT NOT NULL
+    updated_at      TEXT NOT NULL,
+    alerted_at      TEXT
 )
 """
 
@@ -86,6 +89,18 @@ def _connect(db_file: Path) -> sqlite3.Connection:
     return conn
 
 
+def _migrate_alerted_at(conn: sqlite3.Connection) -> None:
+    """Add ``alerted_at`` to a pre-M3 (v1) store that predates it (T005).
+
+    A fresh store already has the column from ``_CREATE_TABLE``, so this is a
+    no-op there; an existing v1 store gets it added via ``ALTER TABLE``,
+    leaving every other column and row untouched (data-model.md).
+    """
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(jobs)")}
+    if "alerted_at" not in columns:
+        conn.execute("ALTER TABLE jobs ADD COLUMN alerted_at TEXT")
+
+
 def init_db(path: Path | None = None) -> Path:
     """Create the job store if absent and stamp its schema version.
 
@@ -96,6 +111,7 @@ def init_db(path: Path | None = None) -> Path:
     target = path or config.db_path()
     with _connect(target) as conn:
         conn.execute(_CREATE_TABLE)
+        _migrate_alerted_at(conn)
         # PRAGMA does not accept bound parameters; SCHEMA_VERSION is our int.
         conn.execute(f"PRAGMA user_version = {int(SCHEMA_VERSION)}")
         conn.commit()
@@ -145,6 +161,20 @@ def get_job(job_id: str, path: Path | None = None) -> dict | None:
     with _connect(target) as conn:
         row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
     return dict(row) if row is not None else None
+
+
+def list_jobs_by_state(state: str, path: Path | None = None) -> list[dict]:
+    """Return every job record currently in ``state``, ordered by ``id``.
+
+    The read seam the scoring orchestrator walks over ``state='new'`` jobs
+    (T014). Ordering by ``id`` keeps a run deterministic across invocations.
+    """
+    target = path or config.db_path()
+    with _connect(target) as conn:
+        rows = conn.execute(
+            "SELECT * FROM jobs WHERE state = ? ORDER BY id", (state,)
+        ).fetchall()
+    return [dict(row) for row in rows]
 
 
 def touch_last_seen(job_id: str, path: Path | None = None) -> bool:
