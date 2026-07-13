@@ -129,9 +129,9 @@ shared; each story wires its own calls/run signals.
 
 **Purpose**: Validation and finishing touches spanning stories.
 
-- [ ] T026 [P] Add a `README.md` (or `docs/`) section covering install (`pip install -e .`), Claude CLI login prerequisite, and the three commands.
-- [ ] T027 [P] Add unit tests for CLI error/exit-code behavior across all three commands in `tests/unit/test_cli_errors.py` (stderr messages, non-zero exits).
-- [ ] T028 Run the full [quickstart.md](./quickstart.md) validation end-to-end and confirm SC-001…SC-006 are met; fix any gaps.
+- [X] T026 [P] Add a `README.md` (or `docs/`) section covering install (`pip install -e .`), Claude CLI login prerequisite, and the three commands.
+- [X] T027 [P] Add unit tests for CLI error/exit-code behavior across all three commands in `tests/unit/test_cli_errors.py` (stderr messages, non-zero exits).
+- [X] T028 Run the full [quickstart.md](./quickstart.md) validation end-to-end and confirm SC-001…SC-006 are met; fix any gaps.
 
 ---
 
