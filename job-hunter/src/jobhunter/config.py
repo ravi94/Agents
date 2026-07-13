@@ -19,6 +19,7 @@ PREFS_FILENAME = "prefs.yaml"
 DB_FILENAME = "jobs.db"
 LOGS_DIRNAME = "logs"
 LOG_FILENAME = "jobhunter.log"
+CACHE_DIRNAME = "cache"
 
 
 def get_home() -> Path:
@@ -63,3 +64,8 @@ def logs_dir() -> Path:
 def log_path() -> Path:
     """Path to the active run log file (``logs/jobhunter.log``)."""
     return logs_dir() / LOG_FILENAME
+
+
+def cache_dir() -> Path:
+    """Directory holding the file-based HTTP response cache (source fetches)."""
+    return get_home() / CACHE_DIRNAME

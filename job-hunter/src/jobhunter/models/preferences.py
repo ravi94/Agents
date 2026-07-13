@@ -75,6 +75,14 @@ class Alerting(BaseModel):
     max_alerts_per_run: int = Field(ge=0)
 
 
+class SearchPrefs(BaseModel):
+    """Optional discovery-query override (M2); empty/absent defers to the profile."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    keywords: list[str] = Field(default_factory=list)
+
+
 class Preferences(BaseModel):
     """Validated matching configuration loaded from ``prefs.yaml`` (M1)."""
 
@@ -83,6 +91,8 @@ class Preferences(BaseModel):
     hard_filters: HardFilters
     soft_weights: SoftWeights
     alerting: Alerting
+    # None or empty keywords: discovery derives its terms from profile.roles.
+    search: SearchPrefs | None = None
 
     @model_validator(mode="after")
     def _warn_on_weight_drift(self) -> Preferences:

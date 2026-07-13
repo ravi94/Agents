@@ -1,7 +1,9 @@
 pypdf>=4
 PyYAML>=6
 pydantic>=2
+httpx>=0.27
 
 [dev]
 pytest>=8
 ruff>=0.5
+jsonschema>=4

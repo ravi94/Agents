@@ -1,7 +1,7 @@
 """T006 — CLI for the jobhunter command.
 
-Wires the three M1 commands (``profile``, ``prefs init|validate``, ``db init``)
-to their handlers per ``contracts/cli.md`` (implemented in T016, T021, T025).
+Wires the M1 commands (``profile``, ``prefs init|validate``, ``db init``) and
+the M2 ``discover`` command to their handlers per ``contracts/cli.md``.
 Conventions: errors go to stderr, success summaries to stdout, and any failure
 exits non-zero.
 """
@@ -111,6 +111,59 @@ def _prefs_validate_handler(args: argparse.Namespace) -> int:
     return 0
 
 
+def _discover_handler(args: argparse.Namespace) -> int:
+    """Query sources, normalize, dedup, and persist new jobs (M2, US1-3)."""
+    from pydantic import ValidationError
+
+    from jobhunter import config, obs
+    from jobhunter.discovery.run import run_discovery
+    from jobhunter.models.preferences import load_preferences
+    from jobhunter.models.profile import load_profile
+    from jobhunter.sources.jsearch import JSearchSource
+
+    profile_path = config.profile_path()
+    if not profile_path.exists():
+        raise CommandError(f"{profile_path} not found — run 'jobhunter profile <resume.pdf>' first")
+    prefs_path = config.prefs_path()
+    if not prefs_path.exists():
+        raise CommandError(f"{prefs_path} not found — run 'jobhunter prefs init' first")
+
+    try:
+        profile = load_profile(profile_path)
+    except (ValidationError, ValueError) as exc:
+        raise CommandError(f"invalid {profile_path}: {exc}") from exc
+    try:
+        prefs = load_preferences(prefs_path)
+    except ValidationError as exc:
+        raise CommandError(f"invalid {prefs_path}: {_format_validation_error(exc)}") from exc
+
+    # Registration = one factory entry per source (FR-002); Adzuna joins here
+    # in US3 with no other orchestrator change.
+    source_factories = {"jsearch": JSearchSource}
+    selected_names = args.source or list(source_factories)
+    unknown = [name for name in selected_names if name not in source_factories]
+    if unknown:
+        raise CommandError(f"unknown source(s): {', '.join(unknown)}")
+    sources = [source_factories[name]() for name in selected_names]
+
+    with obs.trace("discover.run"):
+        summary = run_discovery(sources, profile, prefs, dry_run=args.dry_run)
+
+    lines = [
+        f"Discovery run {summary.run_id} complete.",
+        f"  fetched: {summary.fetched}   new: {summary.new}   "
+        f"seen: {summary.seen}   skipped: {summary.skipped}",
+    ]
+    if summary.attempted_sources:
+        lines.append("  sources:")
+        for name in summary.attempted_sources:
+            failure = summary.source_failures.get(name)
+            status = f"failed  {failure}" if failure else "ok"
+            lines.append(f"    {name}  {status}")
+    print("\n".join(lines))
+    return 0
+
+
 def _db_init_handler(_args: argparse.Namespace) -> int:
     """Create the durable SQLite job store if absent, idempotently (US3)."""
     from jobhunter import obs
@@ -156,6 +209,23 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_prefs_validate.set_defaults(func=_prefs_validate_handler)
 
+    # discover [--source NAME]... [--dry-run]  (M2 US1-3 -> T021)
+    p_discover = subparsers.add_parser(
+        "discover", help="Query sources, normalize, dedup, and persist new jobs."
+    )
+    p_discover.add_argument(
+        "--source",
+        action="append",
+        metavar="NAME",
+        help="Restrict the run to this source (repeatable). Default: all configured sources.",
+    )
+    p_discover.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Fetch, normalize, and dedup, but write nothing to the store.",
+    )
+    p_discover.set_defaults(func=_discover_handler)
+
     # db init  (US3 -> T025)
     p_db = subparsers.add_parser("db", help="Manage the SQLite job store (jobs.db).")
     db_sub = p_db.add_subparsers(dest="db_command", required=True)
@@ -184,6 +254,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         log.error("run failed command=%s error=%s", args.command, type(exc).__name__)
         obs.notify_error(f"jobhunter {args.command} failed: {exc}")
         print(f"error: {exc}", file=sys.stderr)
+        return 1
+    except Exception as exc:  # noqa: BLE001 — an unexpected failure still gets an ntfy signal
+        log.error("run failed command=%s error=%s", args.command, type(exc).__name__)
+        obs.notify_error(f"jobhunter {args.command} failed unexpectedly: {type(exc).__name__}")
+        print(f"error: unexpected failure ({type(exc).__name__}): {exc}", file=sys.stderr)
         return 1
 
 

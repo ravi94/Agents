@@ -1,0 +1,62 @@
+{
+  "results": [
+    {
+      "id": "4021557831",
+      "title": "Backend Engineer, Distributed Systems",
+      "company": {
+        "display_name": "Meridian Cloud"
+      },
+      "location": {
+        "area": ["India", "Karnataka", "Bangalore"],
+        "display_name": "Bangalore, Karnataka"
+      },
+      "description": "Join our distributed systems team building fully remote-friendly infrastructure. Work from home is standard.",
+      "redirect_url": "https://www.adzuna.in/land/ad/4021557831",
+      "salary_min": 2200000.0,
+      "salary_max": 3400000.0,
+      "salary_is_predicted": "1",
+      "contract_time": "full_time",
+      "contract_type": null,
+      "created": "2026-07-08T09:12:00Z"
+    },
+    {
+      "id": "4021557902",
+      "title": "Site Reliability Engineer",
+      "company": {
+        "display_name": "Anchorpoint Technologies"
+      },
+      "location": {
+        "area": ["India", "Karnataka", "Bangalore"],
+        "display_name": "Bangalore, Karnataka"
+      },
+      "description": "In-office role supporting production infrastructure for our Bangalore hub.",
+      "redirect_url": "https://www.adzuna.in/land/ad/4021557902",
+      "salary_min": null,
+      "salary_max": null,
+      "salary_is_predicted": "0",
+      "contract_time": "full_time",
+      "contract_type": "permanent",
+      "created": "2026-07-08T11:45:00Z"
+    },
+    {
+      "id": "4021558014",
+      "title": "Platform Engineer",
+      "company": {
+        "display_name": "Solace Robotics"
+      },
+      "location": {
+        "area": ["India"],
+        "display_name": "India"
+      },
+      "description": "Team is hybrid, two days a week on site.",
+      "redirect_url": "https://www.adzuna.in/land/ad/4021558014",
+      "salary_min": null,
+      "salary_max": null,
+      "salary_is_predicted": "0",
+      "contract_time": null,
+      "contract_type": null,
+      "created": "2026-07-09T06:30:00Z"
+    }
+  ],
+  "count": 3
+}

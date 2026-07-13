@@ -1,8 +1,9 @@
 # job-hunter
 
-Local resume/profile/preferences copilot foundation (**M1**). Turns a resume PDF
-into a persisted structured profile, lets you own a hand-editable `prefs.yaml`,
-and stands up a durable SQLite job store that later milestones will populate.
+Local job-search copilot. Turns a resume PDF into a persisted structured
+profile (**M1**), lets you own a hand-editable `prefs.yaml` (**M1**), and now
+discovers, normalizes, and dedups job postings into a durable SQLite store
+(**M2**, US1).
 
 All state lives under a local app data directory — `~/.job-hunter/` by default,
 or wherever `JOBHUNTER_HOME` points.
@@ -60,7 +61,7 @@ You can also run it as a module without the console script:
 .venv/bin/python -m jobhunter.cli --help
 ```
 
-### Commands (M1)
+### Commands
 
 | Command | What it does | Status |
 |---|---|---|
@@ -68,6 +69,7 @@ You can also run it as a module without the console script:
 | `jobhunter prefs init [--force]` | One-time guided interview → write `prefs.yaml`. Refuses to overwrite without `--force`. | ✅ Implemented (US2) |
 | `jobhunter prefs validate` | Validate `prefs.yaml` against the schema. | ✅ Implemented (US2) |
 | `jobhunter db init` | Create the SQLite job store (`jobs.db`) if absent; idempotent. Prints the path and schema version. | ✅ Implemented (US3) |
+| `jobhunter discover [--source NAME]... [--dry-run]` | Query job sources, normalize, dedup, and persist new postings into `jobs.db`. | ✅ Implemented (M2 US1) |
 
 #### Building your profile
 
@@ -108,6 +110,47 @@ overwrites it unless you pass `--force`. Validate your edits any time:
 silently renormalized). Any invalid value exits non-zero with a message naming
 the offending field, so you can fix it without reading logs.
 
+#### Discovering jobs
+
+`jobhunter discover` queries configured job sources, normalizes each posting,
+dedups within the run and against the store, and persists genuinely new jobs
+(`state=new`, `first_seen`/`last_seen` stamped, no scoring yet). Requires
+`profile.json` and `prefs.yaml` to already exist:
+
+```bash
+export JOBHUNTER_HOME="$(pwd)/data"
+export JSEARCH_API_KEY="your-rapidapi-jsearch-key"   # optional; source is skipped if unset
+.venv/bin/jobhunter discover
+# -> Discovery run <run-id> complete.
+#      fetched: N   new: N   seen: N   skipped: N
+#      sources:
+#        jsearch  ok
+```
+
+- `--dry-run` — fetch, normalize, and dedup, but write nothing to the store (safe to inspect).
+- `--source NAME` — restrict the run to one source (repeatable). Default: all configured sources.
+- A missing source credential (e.g. `JSEARCH_API_KEY`) skips that source and
+  reports it as failed in the summary — it does **not** fail the run (exit
+  code stays `0`).
+- Responses are cached under `data/cache/` (~6h TTL by default) so same-day
+  re-runs don't burn free-tier API quota.
+- Currently implemented source: **JSearch** (RapidAPI job search aggregator,
+  needs `JSEARCH_API_KEY`). Adzuna is planned but not yet implemented.
+
+**Getting a `JSEARCH_API_KEY`:**
+
+1. Sign up / log in at [RapidAPI](https://rapidapi.com/).
+2. Subscribe to the [JSearch API](https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch)
+   — the **Basic** plan has a free monthly quota, enough for occasional manual
+   `discover` runs.
+3. On the API's "Endpoints" tab, copy the `X-RapidAPI-Key` value shown in the
+   sample request headers (it's the same key across all RapidAPI APIs you're
+   subscribed to).
+4. `export JSEARCH_API_KEY="<that value>"` before running `jobhunter discover`.
+
+Without this key, `discover` still runs — it just reports the `jsearch` source
+as failed/unavailable in the summary and moves on (exit code `0`).
+
 ### App data location
 
 All state resolves under the app data directory. The default is `~/.job-hunter/`,
@@ -129,6 +172,7 @@ Resolved paths (with the override above):
 | Profile | `data/profile.json` |
 | Preferences | `data/prefs.yaml` |
 | Job store | `data/jobs.db` |
+| HTTP response cache (`discover`) | `data/cache/` |
 
 The `data/` folder is tracked in git but its **contents are gitignored** — your
 profile, prefs, and DB stay local. Set `JOBHUNTER_HOME` to any other path to
@@ -163,13 +207,16 @@ export JOBHUNTER_NTFY_TOPIC="my-jobhunter-alerts"
 ```
 
 Development is spec- and test-driven — see
-[specs/001-resume-profile-prefs/](specs/001-resume-profile-prefs/) for the spec,
-plan, and task list. Tests are written first and observed to fail before the
-implementation lands (Constitution VII).
+[specs/001-resume-profile-prefs/](specs/001-resume-profile-prefs/) (M1) and
+[specs/002-job-discovery-dedup/](specs/002-job-discovery-dedup/) (M2) for the
+specs, plans, and task lists. Tests are written first and observed to fail
+before the implementation lands (Constitution VII).
 
 ## Current status
 
-**US1, US2 & US3 complete — M1 stories all landed.**
+**M1 (US1, US2 & US3) complete. M2 US1 (single-source discovery) complete.**
+
+M1 — resume/profile/preferences foundation:
 
 - **US1** — `jobhunter profile <resume.pdf>` turns a resume into a validated,
   atomically persisted `profile.json` (extract → structure via Claude → write).
@@ -179,3 +226,13 @@ implementation lands (Constitution VII).
 - **US3** — `jobhunter db init` creates the durable SQLite job store
   (`jobs.db`) idempotently, with the full `jobs` schema (`user_version`) that
   later milestones (discovery, scoring, triage) populate.
+
+M2 — job discovery, normalization & dedup (see
+[specs/002-job-discovery-dedup/](specs/002-job-discovery-dedup/)):
+
+- **US1 (MVP)** — `jobhunter discover` fetches from JSearch, normalizes each
+  posting into the canonical `Job` shape, classifies work mode, dedups within
+  the run, and persists genuinely new jobs (`state=new`) into `jobs.db`.
+  Re-running is idempotent: already-seen jobs only advance `last_seen`.
+- **US2/US3** (idempotent-monitor polish, Adzuna + multi-source resilience) —
+  not yet implemented.

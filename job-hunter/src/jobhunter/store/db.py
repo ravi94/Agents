@@ -145,3 +145,21 @@ def get_job(job_id: str, path: Path | None = None) -> dict | None:
     with _connect(target) as conn:
         row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
     return dict(row) if row is not None else None
+
+
+def touch_last_seen(job_id: str, path: Path | None = None) -> bool:
+    """Advance ``last_seen`` to now for ``job_id``; a pure re-sighting, not a change.
+
+    Leaves ``first_seen``, ``state``, ``updated_at``, and all content columns
+    untouched — re-seeing a posting is not a content update (FR-015), so it
+    must never reset a later ``state`` (e.g. ``interested``) back toward
+    ``new``, nor make ``updated_at`` claim content changed when it didn't.
+    Returns ``False`` (no-op) if ``job_id`` is absent.
+    """
+    target = path or config.db_path()
+    with _connect(target) as conn:
+        cursor = conn.execute(
+            "UPDATE jobs SET last_seen = ? WHERE id = ?", (_now(), job_id)
+        )
+        conn.commit()
+    return cursor.rowcount > 0

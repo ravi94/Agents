@@ -24,9 +24,9 @@ description: "Task list for Job Discovery, Normalization & Dedup (M2)"
 
 **Purpose**: Dependencies and package scaffolding for the discovery stage.
 
-- [ ] T001 Add `httpx` to the runtime dependencies in `pyproject.toml` (constitution stack) and confirm it installs in the project venv.
-- [ ] T002 [P] Create the new package skeletons: `src/jobhunter/sources/__init__.py` and `src/jobhunter/discovery/__init__.py`.
-- [ ] T003 [P] Add source fixtures under `tests/fixtures/`: `jsearch_response.json`, `adzuna_response.json` (representative captured payloads per `contracts/source_mapping.md`), and `source_dupe_pair.json` (the same role from both sources, for cross-source dedup).
+- [x] T001 Add `httpx` to the runtime dependencies in `pyproject.toml` (constitution stack) and confirm it installs in the project venv.
+- [x] T002 [P] Create the new package skeletons: `src/jobhunter/sources/__init__.py` and `src/jobhunter/discovery/__init__.py`.
+- [x] T003 [P] Add source fixtures under `tests/fixtures/`: `jsearch_response.json`, `adzuna_response.json` (representative captured payloads per `contracts/source_mapping.md`), and `source_dupe_pair.json` (the same role from both sources, for cross-source dedup).
 
 ---
 
@@ -36,11 +36,11 @@ description: "Task list for Job Discovery, Normalization & Dedup (M2)"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T004 Define the `JobSource` interface and the `SearchQuery`, `RawPosting`, and `SourceError` types in `src/jobhunter/sources/base.py` per [contracts/job_source.md](./contracts/job_source.md) (the swap seam for the future ATS source, Constitution VI/FR-002).
-- [ ] T005 [P] Unit test the HTTP wrapper in `tests/unit/test_http_backoff.py`: bounded retry count on HTTP 429, exponential backoff, and `Retry-After` honored; gives up after the cap (write first, confirm failing).
-- [ ] T006 Implement the httpx wrapper in `src/jobhunter/http.py` (bounded retries, exponential backoff, `Retry-After`, timeouts) — satisfies T005; the single HTTP path all sources route through (FR-006).
-- [ ] T007 [P] Unit test the response cache in `tests/unit/test_cache.py`: a hit within the TTL is served without a call; a miss/expiry re-fetches; keys are stable per (source, endpoint, params) (write first, confirm failing).
-- [ ] T008 Implement `config.cache_dir()` in `src/jobhunter/config.py` and the file-based response cache in `src/jobhunter/sources/cache.py` (hashed key, stored timestamp, bounded TTL) — satisfies T007 (FR-005, free-tier protection).
+- [x] T004 Define the `JobSource` interface and the `SearchQuery`, `RawPosting`, and `SourceError` types in `src/jobhunter/sources/base.py` per [contracts/job_source.md](./contracts/job_source.md) (the swap seam for the future ATS source, Constitution VI/FR-002).
+- [x] T005 [P] Unit test the HTTP wrapper in `tests/unit/test_http_backoff.py`: bounded retry count on HTTP 429, exponential backoff, and `Retry-After` honored; gives up after the cap (write first, confirm failing).
+- [x] T006 Implement the httpx wrapper in `src/jobhunter/http.py` (bounded retries, exponential backoff, `Retry-After`, timeouts) — satisfies T005; the single HTTP path all sources route through (FR-006).
+- [x] T007 [P] Unit test the response cache in `tests/unit/test_cache.py`: a hit within the TTL is served without a call; a miss/expiry re-fetches; keys are stable per (source, endpoint, params) (write first, confirm failing).
+- [x] T008 Implement `config.cache_dir()` in `src/jobhunter/config.py` and the file-based response cache in `src/jobhunter/sources/cache.py` (hashed key, stored timestamp, bounded TTL) — satisfies T007 (FR-005, free-tier protection).
 
 **Checkpoint**: Interface, rate-limit-safe HTTP, and caching ready. User stories can now begin.
 
@@ -62,15 +62,15 @@ description: "Task list for Job Discovery, Normalization & Dedup (M2)"
 
 ### Implementation for User Story 1
 
-- [ ] T014 [US1] Add the optional `search` block (`SearchPrefs` with `keywords`) to `src/jobhunter/models/preferences.py` — additive, `extra="forbid"` preserved so existing M1 `prefs.yaml` files still validate (data-model.md).
-- [ ] T015 [US1] Implement query derivation in `src/jobhunter/discovery/query.py` (profile roles/seniority × prefs locations; `prefs.search` override; empty → no queries) — depends on T014; satisfies T009.
-- [ ] T016 [US1] Implement the work-mode classification helper in `src/jobhunter/discovery/normalize.py` (explicit flag → text inference → `unknown`) — satisfies T011.
-- [ ] T017 [US1] Implement JSearch payload → canonical `Job` normalization + idempotency-key computation in `src/jobhunter/discovery/normalize.py` (uses the work-mode helper; skips unnormalizable postings) — depends on T016; satisfies T010.
-- [ ] T018 [US1] Implement the idempotency key + within-run dedup (new-vs-store lookup, new path) in `src/jobhunter/discovery/dedup.py` — satisfies T012.
-- [ ] T019 [P] [US1] Implement the JSearch source adapter in `src/jobhunter/sources/jsearch.py`: build requests from `SearchQuery`, route through `http.py` + cache, respect the per-source query budget, raise `SourceError` on failure, and skip itself when `JSEARCH_API_KEY` is absent (contracts/job_source.md).
-- [ ] T020 [US1] Implement the run orchestrator (single-source path) in `src/jobhunter/discovery/run.py`: derive queries → `source.fetch` → normalize → dedup → persist new via `store.upsert_job` → build the `RunSummary`; honor `--dry-run` (no writes) — depends on T015–T019; satisfies T013.
-- [ ] T021 [US1] Wire the `discover` command (`--source`, `--dry-run`) in `src/jobhunter/cli.py` to `discovery.run`; print the run summary to stdout; whole-run failure exits non-zero (per [contracts/cli.md](./contracts/cli.md)).
-- [ ] T022 [US1] Add observability to the discover flow (Constitution VIII): wrap each source fetch in `obs.trace("source.fetch", source=…)` (metadata only) in `run.py`, log the per-run summary line at run end, and confirm `cli.main()` routes a whole-run failure to `obs.notify_error` (ntfy).
+- [x] T014 [US1] Add the optional `search` block (`SearchPrefs` with `keywords`) to `src/jobhunter/models/preferences.py` — additive, `extra="forbid"` preserved so existing M1 `prefs.yaml` files still validate (data-model.md).
+- [x] T015 [US1] Implement query derivation in `src/jobhunter/discovery/query.py` (profile roles/seniority × prefs locations; `prefs.search` override; empty → no queries) — depends on T014; satisfies T009.
+- [x] T016 [US1] Implement the work-mode classification helper in `src/jobhunter/discovery/normalize.py` (explicit flag → text inference → `unknown`) — satisfies T011.
+- [x] T017 [US1] Implement JSearch payload → canonical `Job` normalization + idempotency-key computation in `src/jobhunter/discovery/normalize.py` (uses the work-mode helper; skips unnormalizable postings) — depends on T016; satisfies T010.
+- [x] T018 [US1] Implement the idempotency key + within-run dedup (new-vs-store lookup, new path) in `src/jobhunter/discovery/dedup.py` — satisfies T012.
+- [x] T019 [P] [US1] Implement the JSearch source adapter in `src/jobhunter/sources/jsearch.py`: build requests from `SearchQuery`, route through `http.py` + cache, respect the per-source query budget, raise `SourceError` on failure, and skip itself when `JSEARCH_API_KEY` is absent (contracts/job_source.md).
+- [x] T020 [US1] Implement the run orchestrator (single-source path) in `src/jobhunter/discovery/run.py`: derive queries → `source.fetch` → normalize → dedup → persist new via `store.upsert_job` → build the `RunSummary`; honor `--dry-run` (no writes) — depends on T015–T019; satisfies T013.
+- [x] T021 [US1] Wire the `discover` command (`--source`, `--dry-run`) in `src/jobhunter/cli.py` to `discovery.run`; print the run summary to stdout; whole-run failure exits non-zero (per [contracts/cli.md](./contracts/cli.md)).
+- [x] T022 [US1] Add observability to the discover flow (Constitution VIII): wrap each source fetch in `obs.trace("source.fetch", source=…)` (metadata only) in `run.py`, log the per-run summary line at run end, and confirm `cli.main()` routes a whole-run failure to `obs.notify_error` (ntfy).
 
 **Checkpoint**: `jobhunter discover` captures new jobs from one source, independently testable (MVP).
 
