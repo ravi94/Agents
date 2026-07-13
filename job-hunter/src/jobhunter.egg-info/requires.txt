@@ -1,0 +1,7 @@
+pypdf>=4
+PyYAML>=6
+pydantic>=2
+
+[dev]
+pytest>=8
+ruff>=0.5

@@ -24,10 +24,10 @@ description: "Task list for Resume Profile & Preferences Foundation (M1)"
 
 **Purpose**: Project scaffolding and tooling.
 
-- [ ] T001 Create the package structure per plan.md: `src/jobhunter/` with `models/`, `resume/`, `llm/`, `prefs/`, `store/` subpackages (each with `__init__.py`), plus `tests/unit/`, `tests/integration/`, `tests/fixtures/`.
-- [ ] T002 Create `pyproject.toml` at repo root declaring Python 3.11+, dependencies (`pypdf`, `PyYAML`, `pydantic>=2`), dev dependency `pytest`, and a `jobhunter` console-script entry point pointing at `src/jobhunter/cli.py`.
-- [ ] T003 [P] Configure linting/formatting (ruff config in `pyproject.toml`) and add `pytest` config (test paths, `-q`) to `pyproject.toml`.
-- [ ] T004 [P] Add test fixtures: a small text-extractable `tests/fixtures/sample_resume.pdf`, an image-only `tests/fixtures/scanned_image.pdf`, and `tests/fixtures/claude_profile_response.json` (a representative `claude -p` JSON structuring response).
+- [X] T001 Create the package structure per plan.md: `src/jobhunter/` with `models/`, `resume/`, `llm/`, `prefs/`, `store/` subpackages (each with `__init__.py`), plus `tests/unit/`, `tests/integration/`, `tests/fixtures/`.
+- [X] T002 Create `pyproject.toml` at repo root declaring Python 3.11+, dependencies (`pypdf`, `PyYAML`, `pydantic>=2`), dev dependency `pytest`, and a `jobhunter` console-script entry point pointing at `src/jobhunter/cli.py`.
+- [X] T003 [P] Configure linting/formatting (ruff config in `pyproject.toml`) and add `pytest` config (test paths, `-q`) to `pyproject.toml`.
+- [X] T004 [P] Add test fixtures: a small text-extractable `tests/fixtures/sample_resume.pdf`, an image-only `tests/fixtures/scanned_image.pdf`, and `tests/fixtures/claude_profile_response.json` (a representative `claude -p` JSON structuring response).
 
 ---
 
@@ -37,9 +37,9 @@ description: "Task list for Resume Profile & Preferences Foundation (M1)"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T005 Implement app data directory + path resolution in `src/jobhunter/config.py`: resolve `JOBHUNTER_HOME` env var (default `~/.job-hunter/`), expose paths for `profile.json`, `prefs.yaml`, `jobs.db`, and ensure the directory exists.
-- [ ] T006 [P] Create the CLI skeleton in `src/jobhunter/cli.py`: argument parser with `profile`, `prefs` (subcommands `init`, `validate`), and `db init` commands wired to placeholder handlers; errors to stderr, summaries to stdout; non-zero exit on failure.
-- [ ] T007 [P] Write the unit test for `config.py` path resolution in `tests/unit/test_config.py` (default vs `JOBHUNTER_HOME` override) — confirm failing, then covered by T005.
+- [X] T005 Implement app data directory + path resolution in `src/jobhunter/config.py`: resolve `JOBHUNTER_HOME` env var (default `~/.job-hunter/`), expose paths for `profile.json`, `prefs.yaml`, `jobs.db`, and ensure the directory exists.
+- [X] T006 [P] Create the CLI skeleton in `src/jobhunter/cli.py`: argument parser with `profile`, `prefs` (subcommands `init`, `validate`), and `db init` commands wired to placeholder handlers; errors to stderr, summaries to stdout; non-zero exit on failure.
+- [X] T007 [P] Write the unit test for `config.py` path resolution in `tests/unit/test_config.py` (default vs `JOBHUNTER_HOME` override) — confirm failing, then covered by T005.
 
 **Checkpoint**: Package importable, CLI dispatches, paths resolve. User stories can now begin.
 
