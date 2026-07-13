@@ -53,9 +53,9 @@ description: "Task list for Resume Profile & Preferences Foundation (M1)"
 
 ### Tests for User Story 1 (write first, confirm failing) ⚠️
 
-- [ ] T008 [P] [US1] Unit test for PDF text extraction in `tests/unit/test_resume_extract.py`: extracts text from `sample_resume.pdf`; raises a clear error (no text) for `scanned_image.pdf`.
-- [ ] T009 [P] [US1] Unit test for the `Profile` pydantic model in `tests/unit/test_profile_model.py`: valid parse from `claude_profile_response.json`; rejects empty `skills`; `seniority`/nullable fields default to null (never fabricated); validates against `contracts/profile.schema.json`.
-- [ ] T010 [P] [US1] Integration test for the resume parser in `tests/integration/test_resume_parser.py` using a mock/fixture `LLMProvider` (no live `claude`): end-to-end resume → Profile; asserts atomic write leaves a prior `profile.json` intact on provider failure/malformed JSON; asserts only resume text is passed to the provider (FR-014).
+- [X] T008 [P] [US1] Unit test for PDF text extraction in `tests/unit/test_resume_extract.py`: extracts text from `sample_resume.pdf`; raises a clear error (no text) for `scanned_image.pdf`.
+- [X] T009 [P] [US1] Unit test for the `Profile` pydantic model in `tests/unit/test_profile_model.py`: valid parse from `claude_profile_response.json`; rejects empty `skills`; `seniority`/nullable fields default to null (never fabricated); validates against `contracts/profile.schema.json`.
+- [X] T010 [P] [US1] Integration test for the resume parser in `tests/integration/test_resume_parser.py` using a mock/fixture `LLMProvider` (no live `claude`): end-to-end resume → Profile; asserts atomic write leaves a prior `profile.json` intact on provider failure/malformed JSON; asserts only resume text is passed to the provider (FR-014).
 
 ### Implementation for User Story 1
 
