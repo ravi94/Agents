@@ -1,24 +1,29 @@
 <!--
 Sync Impact Report
-Version change: 2.1.0 → 2.2.0
-Rationale: Added a Test-First Development principle (non-negotiable TDD) at the
-user's request. A new principle is a MINOR bump per this document's own versioning
-policy. LLM-touching code (resume parser, re-rank) is explicitly scoped to testing
-the surrounding plumbing (schema/contract validation, error handling, the
-provider-swap interface) via mocked/fixture responses — never asserting on exact
-LLM wording, since model output isn't deterministic.
+Version change: 2.2.0 → 2.3.0
+Rationale: Added an Observability principle (structured log tracing with a run
+correlation id, log-file rotation to bound disk, and per-feature monitoring via
+a tailable log plus ntfy-on-error) at the user's request. A new principle is a
+MINOR bump per this document's own versioning policy. The principle is scoped to
+stay local-first and zero-cost (stdlib logging + RotatingFileHandler; no hosted
+observability service) and privacy-preserving (trace call metadata — durations,
+outcomes, source ids — never resume/prefs payloads, per Principle I).
 Modified principles: none
 Added sections:
-  - VII. Test-First Development (NON-NEGOTIABLE)
+  - VIII. Observable by Default (Tracing, Rotation & Monitoring)
 Removed sections: none
 Templates requiring updates:
-  - .specify/templates/plan-template.md ✅ reviewed — Testing line is a fill-in-at-plan-time
-    placeholder already; no structural edit needed
-  - .specify/templates/spec-template.md ✅ reviewed — no edit needed
-  - .specify/templates/tasks-template.md ⚠ updated — removed "OPTIONAL — only if
-    tests requested" framing on per-story test sections and the "(if requested)"
-    qualifiers, since tests are now mandatory project-wide, not opt-in
+  - .specify/templates/plan-template.md ✅ reviewed — Constitution Check gate is a
+    generic fill-in ("[Gates determined based on constitution file]"); no edit needed
+  - .specify/templates/spec-template.md ✅ reviewed — observability is an operational
+    concern, not a spec-level mandatory section; no edit needed
+  - .specify/templates/tasks-template.md ⚠ updated — foundational logging task and
+    per-story logging task now name structured tracing (run id), log rotation, and
+    error/health signal surfacing, so generated task lists carry the new principle
 Deferred TODOs: none
+
+Prior amendment (2.1.0 → 2.2.0): added VII. Test-First Development (NON-NEGOTIABLE);
+tasks-template updated to make per-story tests mandatory rather than opt-in.
 -->
 
 # Job-Hunt Copilot Constitution
@@ -113,6 +118,34 @@ corrupt rankings — before they ship. Since LLM output is inherently non-determ
 what must be verified mechanically is the contract around the model, not its wording;
 testing prose would make the suite flaky for no safety gained.
 
+### VIII. Observable by Default (Tracing, Rotation & Monitoring)
+Every feature MUST be observable the moment it ships — never bolted on later. Three
+requirements are non-negotiable for each feature build:
+- **Structured log tracing.** Each run MUST generate a single run/correlation id that is
+  threaded through every log line the run emits, so one run's activity can be isolated end
+  to end. Every LLM call and every external/network call (discovery sources, the LLM
+  provider) MUST be traced with at least its start, outcome (success/failure), duration, and
+  source/endpoint identity. Traces MUST record call *metadata only* — never the resume text,
+  `prefs.yaml`, profile, or any personal payload (Principle I); logging that content is a
+  privacy violation, not observability.
+- **Log rotation.** Logs MUST be written to a tailable file under the app data directory and
+  MUST rotate by size or time (e.g. stdlib `logging.handlers.RotatingFileHandler`) with a
+  bounded backup count, so log volume can never grow the local footprint without limit.
+- **Monitoring / health signals.** Each feature MUST emit machine-visible health and error
+  signals: a per-run summary (counts processed, new vs. seen, per-source failures) logged at
+  run end, and errors surfaced via ntfy so a failure in an unattended run is noticed. A single
+  dead discovery source MUST be logged and traced, then skipped — consistent with the
+  Resilience constraint — never silently swallowed.
+Observability MUST honor Principles II and VI: v1 uses stdlib logging with a rotating file
+handler and ntfy — no hosted observability service, no metered cost, no agent framework. A
+richer local trace viewer (e.g. Phoenix) MAY be used as an opt-in developer aid but MUST NOT
+become a runtime dependency of the pipeline.
+**Rationale:** This is an unattended monitor the user will trust with their job search; a
+run they cannot see into is one they cannot debug or believe. A correlation id makes a run's
+story reconstructable, call tracing makes the bounded LLM/network usage (Principles I–II)
+auditable, rotation keeps a local-first tool from filling the disk, and ntfy-on-error means a
+silent failure doesn't quietly stop surfacing roles.
+
 ## Technology & Operational Constraints
 
 - **Stack:** Python 3.11+, FastAPI, SQLite, httpx, pypdf, NumPy, Claude Code CLI
@@ -149,6 +182,11 @@ testing prose would make the suite flaky for no safety gained.
 - **Test-first gate:** No task implementing new behavior may be marked complete without
   a preceding test that was observed to fail, per Principle VII. Tasks/PRs MUST NOT
   mark tests as optional or defer them to a later cleanup pass.
+- **Observability gate:** Every feature MUST ship with the observability required by
+  Principle VIII — run-id-threaded structured logs, tracing of its LLM/external calls
+  (metadata only), rotating log output, and an error/health signal (ntfy on failure).
+  A feature that adds an LLM or network call or a new run stage MUST NOT be marked
+  complete while that call/stage is untraced.
 
 ## Governance
 
@@ -166,4 +204,4 @@ changed.
 **Compliance:** All plans and reviews MUST verify compliance with these principles.
 Complexity that violates Principle VI MUST be explicitly justified or removed.
 
-**Version**: 2.2.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-07-13
+**Version**: 2.3.0 | **Ratified**: 2026-07-13 | **Last Amended**: 2026-07-13
