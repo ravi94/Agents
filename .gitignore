@@ -16,6 +16,8 @@ venv/
 # Runtime artifacts
 .search_cache/
 summary-*.md
+.tmp-jobhunter-verify/
+.tmp-*/
 
 # Large binaries / installers
 *.dmg
