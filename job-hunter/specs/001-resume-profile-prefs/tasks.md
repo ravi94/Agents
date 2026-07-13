@@ -78,14 +78,14 @@ description: "Task list for Resume Profile & Preferences Foundation (M1)"
 
 ### Tests for User Story 2 (write first, confirm failing) ⚠️
 
-- [ ] T017 [P] [US2] Unit test for `Preferences` validation in `tests/unit/test_preferences_validation.py`: valid file parses; invalid `work_modes`/negative `comp_floor_lpa`/out-of-enum `seniority_floor`/allow∩deny overlap/out-of-range weights & `score_threshold`/negative `max_alerts_per_run` each error naming the field; weight sum ≠ 1.0 warns but preserves values (FR-008); empty `locations` errors.
-- [ ] T018 [P] [US2] Integration test for the interview + reload in `tests/integration/test_prefs_interview.py` (mock stdin): interview writes a schema-valid `prefs.yaml`; `init` refuses when the file exists (no `--force`); an interrupted/aborted interview writes nothing; a hand-edited value is honored on reload without re-running the interview.
+- [X] T017 [P] [US2] Unit test for `Preferences` validation in `tests/unit/test_preferences_validation.py`: valid file parses; invalid `work_modes`/negative `comp_floor_lpa`/out-of-enum `seniority_floor`/allow∩deny overlap/out-of-range weights & `score_threshold`/negative `max_alerts_per_run` each error naming the field; weight sum ≠ 1.0 warns but preserves values (FR-008); empty `locations` errors.
+- [X] T018 [P] [US2] Integration test for the interview + reload in `tests/integration/test_prefs_interview.py` (mock stdin): interview writes a schema-valid `prefs.yaml`; `init` refuses when the file exists (no `--force`); an interrupted/aborted interview writes nothing; a hand-edited value is honored on reload without re-running the interview.
 
 ### Implementation for User Story 2
 
-- [ ] T019 [P] [US2] Implement the `Preferences` pydantic model + YAML load/validate in `src/jobhunter/models/preferences.py` per `contracts/prefs.schema.md` (errors name the field; weight-sum drift is a warning, not an error) — satisfies T017.
-- [ ] T020 [US2] Implement the guided interview in `src/jobhunter/prefs/interview.py`: fixed question set → build & write `prefs.yaml`; write nothing on abort; refuse to overwrite an existing file unless forced (depends on T019) — satisfies T018.
-- [ ] T021 [US2] Wire `prefs init [--force]` and `prefs validate` commands in `src/jobhunter/cli.py` (validate prints warnings but exits 0 when valid; exits non-zero naming the offending field when invalid) per `contracts/cli.md`.
+- [X] T019 [P] [US2] Implement the `Preferences` pydantic model + YAML load/validate in `src/jobhunter/models/preferences.py` per `contracts/prefs.schema.md` (errors name the field; weight-sum drift is a warning, not an error) — satisfies T017.
+- [X] T020 [US2] Implement the guided interview in `src/jobhunter/prefs/interview.py`: fixed question set → build & write `prefs.yaml`; write nothing on abort; refuse to overwrite an existing file unless forced (depends on T019) — satisfies T018.
+- [X] T021 [US2] Wire `prefs init [--force]` and `prefs validate` commands in `src/jobhunter/cli.py` (validate prints warnings but exits 0 when valid; exits non-zero naming the offending field when invalid) per `contracts/cli.md`.
 
 **Checkpoint**: User Stories 1 and 2 both work independently.
 
@@ -99,13 +99,13 @@ description: "Task list for Resume Profile & Preferences Foundation (M1)"
 
 ### Tests for User Story 3 (write first, confirm failing) ⚠️
 
-- [ ] T022 [P] [US3] Unit test for schema creation in `tests/unit/test_store_schema.py`: `db init` creates the `jobs` table with every column from data-model.md, sets `PRAGMA user_version`, and is idempotent (second init preserves existing rows — not wiped).
-- [ ] T023 [P] [US3] Integration test for record round-trip in `tests/integration/test_db_roundtrip.py`: insert a job record, read it back with all fields unchanged; `state` defaults to `new`; `first_seen`/`last_seen`/`updated_at` populated; store persists across separate connections/runs.
+- [X] T022 [P] [US3] Unit test for schema creation in `tests/unit/test_store_schema.py`: `db init` creates the `jobs` table with every column from data-model.md, sets `PRAGMA user_version`, and is idempotent (second init preserves existing rows — not wiped).
+- [X] T023 [P] [US3] Integration test for record round-trip in `tests/integration/test_db_roundtrip.py`: insert a job record, read it back with all fields unchanged; `state` defaults to `new`; `first_seen`/`last_seen`/`updated_at` populated; store persists across separate connections/runs.
 
 ### Implementation for User Story 3
 
-- [ ] T024 [US3] Implement the store in `src/jobhunter/store/db.py`: `init_db()` (`CREATE TABLE IF NOT EXISTS jobs(...)` per data-model.md + set `user_version`, idempotent) and minimal `upsert_job`/`get_job` CRUD with parameterized queries and `state` default `new` — satisfies T022, T023.
-- [ ] T025 [US3] Wire the `db init` command in `src/jobhunter/cli.py` to `init_db()`; print the `jobs.db` path and schema version per `contracts/cli.md`.
+- [X] T024 [US3] Implement the store in `src/jobhunter/store/db.py`: `init_db()` (`CREATE TABLE IF NOT EXISTS jobs(...)` per data-model.md + set `user_version`, idempotent) and minimal `upsert_job`/`get_job` CRUD with parameterized queries and `state` default `new` — satisfies T022, T023.
+- [X] T025 [US3] Wire the `db init` command in `src/jobhunter/cli.py` to `init_db()`; print the `jobs.db` path and schema version per `contracts/cli.md`.
 
 **Checkpoint**: All three user stories independently functional.
 
@@ -120,8 +120,8 @@ shared; each story wires its own calls/run signals.
 
 - [X] T029 [Obs] Foundational observability module in `src/jobhunter/obs.py` (run-id logging filter, `RotatingFileHandler` under `logs/`, `trace()` context manager, `notify_error()` ntfy hook) + `config.log_path()`/`logs_dir()` — tests in `tests/unit/test_obs.py` (write first, confirm failing).
 - [X] T030 [US1] Wire tracing into the profile flow: trace `resume.extract` and `llm.structure_resume` in `resume/parser.py`; configure run logging + run start/end + ntfy-on-error in `cli.py` `main()`.
-- [ ] T031 [US2] Wire observability into `prefs init`/`validate`: trace the interview + validation, log per-run outcome, ntfy on failure (lands with T019–T021).
-- [ ] T032 [US3] Wire observability into `db init`: trace schema creation, log the outcome/version, ntfy on failure (lands with T024–T025).
+- [X] T031 [US2] Wire observability into `prefs init`/`validate`: trace the interview + validation, log per-run outcome, ntfy on failure (lands with T019–T021).
+- [X] T032 [US3] Wire observability into `db init`: trace schema creation, log the outcome/version, ntfy on failure (lands with T024–T025).
 
 ---
 

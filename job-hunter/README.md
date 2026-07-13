@@ -65,14 +65,9 @@ You can also run it as a module without the console script:
 | Command | What it does | Status |
 |---|---|---|
 | `jobhunter profile <resume.pdf>` | Extract resume text → structure via Claude → write `profile.json`. | ✅ Implemented (US1) |
-| `jobhunter prefs init [--force]` | One-time guided interview → write `prefs.yaml`. Refuses to overwrite without `--force`. | Skeleton — implemented in US2 |
-| `jobhunter prefs validate` | Validate `prefs.yaml` against the schema. | Skeleton — implemented in US2 |
-| `jobhunter db init` | Create the SQLite job store (`jobs.db`) if absent; idempotent. | Skeleton — implemented in US3 |
-
-> The remaining skeleton commands (`prefs`, `db`) currently print
-> `not implemented yet` to stderr and exit non-zero. They become functional as
-> their user stories land (see
-> [tasks.md](specs/001-resume-profile-prefs/tasks.md)).
+| `jobhunter prefs init [--force]` | One-time guided interview → write `prefs.yaml`. Refuses to overwrite without `--force`. | ✅ Implemented (US2) |
+| `jobhunter prefs validate` | Validate `prefs.yaml` against the schema. | ✅ Implemented (US2) |
+| `jobhunter db init` | Create the SQLite job store (`jobs.db`) if absent; idempotent. Prints the path and schema version. | ✅ Implemented (US3) |
 
 #### Building your profile
 
@@ -88,6 +83,30 @@ export JOBHUNTER_HOME="$(pwd)/data"          # keep state inside the repo
 The write is atomic and the resume text is the only thing sent to the provider.
 An image-only/scanned PDF is rejected before any Claude call, and any failure
 leaves an existing `profile.json` untouched.
+
+#### Setting your preferences
+
+`jobhunter prefs init` runs a one-time guided interview (no Claude CLI needed)
+and writes `prefs.yaml` — your hard filters (locations, work modes, company
+types, comp floor, seniority floor), soft weights, and alerting thresholds:
+
+```bash
+export JOBHUNTER_HOME="$(pwd)/data"
+.venv/bin/jobhunter prefs init
+# -> writes data/prefs.yaml, then reminds you it's yours to hand-edit
+```
+
+The file is meant to be hand-edited afterward — the interview never re-runs or
+overwrites it unless you pass `--force`. Validate your edits any time:
+
+```bash
+.venv/bin/jobhunter prefs validate
+```
+
+`validate` exits `0` when the file is valid. A soft-weight sum that drifts from
+`~1.0` prints a **warning** but still passes (your values are preserved, never
+silently renormalized). Any invalid value exits non-zero with a message naming
+the offending field, so you can fix it without reading logs.
 
 ### App data location
 
@@ -150,6 +169,13 @@ implementation lands (Constitution VII).
 
 ## Current status
 
-**US1 complete** — `jobhunter profile <resume.pdf>` turns a resume into a
-validated, atomically persisted `profile.json` (extract → structure via Claude →
-write). Next up is **US2** — the `jobhunter prefs` interview and validation.
+**US1, US2 & US3 complete — M1 stories all landed.**
+
+- **US1** — `jobhunter profile <resume.pdf>` turns a resume into a validated,
+  atomically persisted `profile.json` (extract → structure via Claude → write).
+- **US2** — `jobhunter prefs init` seeds a hand-editable `prefs.yaml` via a
+  guided interview; `jobhunter prefs validate` checks it (field-named errors,
+  weight-sum warnings).
+- **US3** — `jobhunter db init` creates the durable SQLite job store
+  (`jobs.db`) idempotently, with the full `jobs` schema (`user_version`) that
+  later milestones (discovery, scoring, triage) populate.
