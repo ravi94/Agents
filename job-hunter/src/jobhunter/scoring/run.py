@@ -15,8 +15,12 @@ query) are handed to `scoring.alert.run_alerts` (T025/T027): a job already
 `alerted_at`-set from a prior run is never revisited, since a rescoring run
 only ever processes `state='new'` jobs, so an already-`scored` job simply
 never reaches this loop again (data-model.md's write-once `alerted_at`
-guarantee, FR-009). `reranked` stays `0` here — the optional re-rank (US4)
-extends this orchestrator later without changing the filter/score/alert core.
+guarantee, FR-009).
+
+When `rerank=True` (T035, US4), this run's newly-scored jobs are also handed
+to `scoring.rerank.run_rerank`, bounded to the top ~25 by `score`; omitting
+`--rerank` (the default) leaves `reranked` at `0` and never touches
+`provider` — filter/score/alert behavior is unaffected either way.
 """
 
 from __future__ import annotations
@@ -24,10 +28,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from jobhunter import obs
+from jobhunter.llm.provider import LLMProvider
 from jobhunter.models.preferences import Preferences
 from jobhunter.models.profile import Profile
 from jobhunter.scoring.alert import run_alerts
 from jobhunter.scoring.filters import apply_filters
+from jobhunter.scoring.rerank import run_rerank
 from jobhunter.scoring.scorer import ScoreBreakdown, score_job, to_job_fields
 from jobhunter.store import db
 
@@ -55,8 +61,16 @@ def run_scoring(
     prefs: Preferences,
     *,
     dry_run: bool = False,
+    rerank: bool = False,
+    provider: LLMProvider | None = None,
 ) -> ScoreRunSummary:
-    """Filter and score every `state='new'` job; return the run summary."""
+    """Filter and score every `state='new'` job; return the run summary.
+
+    `rerank`/`provider` are a strict opt-in addition (US4): when `rerank` is
+    False (the default), `provider` is never touched and `reranked` stays 0.
+    Constructing the real `ClaudeCLIProvider` is the CLI's job, not this
+    function's — callers that want `--rerank` must pass a `provider`.
+    """
     # Reuse the CLI's correlation id (as run_discovery does) so the printed
     # summary and every log line for this run agree.
     summary = ScoreRunSummary(run_id=obs.current_run_id())
@@ -92,6 +106,8 @@ def run_scoring(
 
     if newly_scored:
         summary.alerted = run_alerts(newly_scored, prefs, dry_run=dry_run)
+        if rerank:
+            summary.reranked = run_rerank(newly_scored, profile, provider, dry_run=dry_run)
 
     log.info(
         "score: run complete run_id=%s filtered_out=%d scored=%d alerted=%d reranked=%d",

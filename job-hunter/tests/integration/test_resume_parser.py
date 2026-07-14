@@ -32,6 +32,9 @@ class RecordingProvider(LLMProvider):
         self.call_count += 1
         return Profile.model_validate(self._payload)
 
+    def rerank(self, candidates: list[dict], profile: Profile) -> dict[str, str]:
+        raise NotImplementedError("not exercised by this test module")
+
 
 class FailingProvider(LLMProvider):
     """Simulates a provider error / malformed response (raises, never returns)."""
@@ -42,6 +45,9 @@ class FailingProvider(LLMProvider):
     def structure_resume(self, resume_text: str) -> Profile:
         self.call_count += 1
         raise LLMProviderError("malformed JSON from provider")
+
+    def rerank(self, candidates: list[dict], profile: Profile) -> dict[str, str]:
+        raise NotImplementedError("not exercised by this test module")
 
 
 @pytest.fixture(autouse=True)

@@ -122,17 +122,17 @@ description: "Task list for Job Scoring, Filtering & Alerting (M3)"
 
 ### Tests for User Story 4 (write first, confirm failing) ⚠️
 
-- [ ] T029 [P] [US4] Unit test the `LLMProvider.rerank` contract in `tests/unit/test_rerank.py`: a mocked provider is called exactly once with at most 25 candidates carrying only title/description/matched-skills + profile skills/roles (never `prefs.yaml` or tracking state); returns a job-id → reason mapping; a provider error/timeout is caught and leaves reasons empty without raising.
-- [ ] T030 [P] [US4] Unit test `ClaudeCLIProvider.rerank` in `tests/unit/test_claude_cli.py` (extend): builds the bounded prompt from candidates + profile, parses the response into a job-id → reason mapping, raises `LLMProviderError` on malformed output (mocked `claude -p` call — no live call).
-- [ ] T031 [P] [US4] Integration test in `tests/integration/test_score_rerank_optional.py`: a fixture of 25+ scored survivors with `--rerank` → exactly one bounded call, only the top ~25 get `reason` set; running without `--rerank` behaves identically to US1–US3 with `reranked: 0`.
+- [x] T029 [P] [US4] Unit test the `LLMProvider.rerank` contract in `tests/unit/test_rerank.py`: a mocked provider is called exactly once with at most 25 candidates carrying only title/description/matched-skills + profile skills/roles (never `prefs.yaml` or tracking state); returns a job-id → reason mapping; a provider error/timeout is caught and leaves reasons empty without raising.
+- [x] T030 [P] [US4] Unit test `ClaudeCLIProvider.rerank` in `tests/unit/test_claude_cli.py` (extend): builds the bounded prompt from candidates + profile, parses the response into a job-id → reason mapping, raises `LLMProviderError` on malformed output (mocked `claude -p` call — no live call).
+- [x] T031 [P] [US4] Integration test in `tests/integration/test_score_rerank_optional.py`: a fixture of 25+ scored survivors with `--rerank` → exactly one bounded call, only the top ~25 get `reason` set; running without `--rerank` behaves identically to US1–US3 with `reranked: 0`.
 
 ### Implementation for User Story 4
 
-- [ ] T032 [US4] Add the abstract `rerank(candidates, profile) -> dict[str, str]` method to `LLMProvider` in `src/jobhunter/llm/provider.py` (extends the M1 seam) — satisfies T029's contract.
-- [ ] T033 [US4] Implement `ClaudeCLIProvider.rerank` in `src/jobhunter/llm/claude_cli.py`: single `claude -p` call, bounded prompt, JSON-parsed response, `LLMProviderError` on malformed output — depends on T032; satisfies T030.
-- [ ] T034 [US4] Implement the bounded re-rank orchestration in `src/jobhunter/scoring/rerank.py`: slice this run's `scored` jobs to the top ~25 by `score`, call `provider.rerank` once, write each returned reason into that job's `reason` — depends on T033; satisfies T031.
-- [ ] T035 [US4] Wire `--rerank` into the `score` CLI command in `src/jobhunter/cli.py` and the orchestrator in `src/jobhunter/scoring/run.py`: invoke `rerank.py` only when the flag is passed; add `reranked` to `ScoreRunSummary`; a rerank failure logs and continues without affecting persisted scores/alerts — depends on T014, T027, T034.
-- [ ] T036 [US4] Add observability: trace the re-rank call (`obs.trace("scoring.rerank", ...)`, metadata only — candidate count/duration/outcome, never job/profile content) and include `reranked` in the per-run summary log line.
+- [x] T032 [US4] Add the abstract `rerank(candidates, profile) -> dict[str, str]` method to `LLMProvider` in `src/jobhunter/llm/provider.py` (extends the M1 seam) — satisfies T029's contract.
+- [x] T033 [US4] Implement `ClaudeCLIProvider.rerank` in `src/jobhunter/llm/claude_cli.py`: single `claude -p` call, bounded prompt, JSON-parsed response, `LLMProviderError` on malformed output — depends on T032; satisfies T030.
+- [x] T034 [US4] Implement the bounded re-rank orchestration in `src/jobhunter/scoring/rerank.py`: slice this run's `scored` jobs to the top ~25 by `score`, call `provider.rerank` once, write each returned reason into that job's `reason` — depends on T033; satisfies T031.
+- [x] T035 [US4] Wire `--rerank` into the `score` CLI command in `src/jobhunter/cli.py` and the orchestrator in `src/jobhunter/scoring/run.py`: invoke `rerank.py` only when the flag is passed; add `reranked` to `ScoreRunSummary`; a rerank failure logs and continues without affecting persisted scores/alerts — depends on T014, T027, T034.
+- [x] T036 [US4] Add observability: trace the re-rank call (`obs.trace("scoring.rerank", ...)`, metadata only — candidate count/duration/outcome, never job/profile content) and include `reranked` in the per-run summary log line.
 
 **Checkpoint**: All four user stories independently functional; `--rerank` is a strict opt-in addition.
 
@@ -142,9 +142,9 @@ description: "Task list for Job Scoring, Filtering & Alerting (M3)"
 
 **Purpose**: Validation and finishing touches spanning stories.
 
-- [ ] T037 [P] Update `README.md`: the `jobhunter score` command, `--dry-run`/`--rerank` flags, the schema v2 note (`alerted_at`), and the local-Ollama prerequisite for the `scope` component (with its keyword-overlap fallback noted).
-- [ ] T038 [P] Add CLI error/exit-code tests for `score` in `tests/unit/test_cli_score.py`: missing profile/prefs errors; zero `state=new` jobs is a clean exit-0 no-op; whole-run failure exits non-zero (per [contracts/cli.md](./contracts/cli.md)).
-- [ ] T039 Run the [quickstart.md](./quickstart.md) validation end-to-end (fixture jobs; Ollama and `--rerank` both optional) and confirm SC-001…SC-005 are met; fix any gaps.
+- [x] T037 [P] Update `README.md`: the `jobhunter score` command, `--dry-run`/`--rerank` flags, the schema v2 note (`alerted_at`), and the local-Ollama prerequisite for the `scope` component (with its keyword-overlap fallback noted).
+- [x] T038 [P] Add CLI error/exit-code tests for `score` in `tests/unit/test_cli_score.py`: missing profile/prefs errors; zero `state=new` jobs is a clean exit-0 no-op; whole-run failure exits non-zero (per [contracts/cli.md](./contracts/cli.md)).
+- [x] T039 Run the [quickstart.md](./quickstart.md) validation end-to-end (fixture jobs; Ollama and `--rerank` both optional) and confirm SC-001…SC-005 are met; fix any gaps.
 
 ---
 

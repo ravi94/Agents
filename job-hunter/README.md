@@ -1,10 +1,12 @@
 # job-hunter
 
 Local job-search copilot. Turns a resume PDF into a persisted structured
-profile (**M1**), lets you own a hand-editable `prefs.yaml` (**M1**), and now
+profile (**M1**), lets you own a hand-editable `prefs.yaml` (**M1**),
 discovers, normalizes, and dedups job postings from multiple sources into a
 durable SQLite store, resiliently — a source outage never fails the run
-(**M2**, complete).
+(**M2**, complete) — and filters, composite-scores, alerts on, and optionally
+LLM-re-ranks those postings against your profile and preferences (**M3**,
+complete).
 
 All state lives under a local app data directory — `~/.job-hunter/` by default,
 or wherever `JOBHUNTER_HOME` points.
@@ -12,8 +14,13 @@ or wherever `JOBHUNTER_HOME` points.
 ## Prerequisites
 
 - **Python 3.11+** (the project requires `>=3.11`; a 3.9/3.10 venv will fail to install).
-- **Claude CLI**, logged in — only needed for the `profile` command, which calls
-  `claude -p` to structure the resume. Not required for `prefs` or `db`.
+- **Claude CLI**, logged in — needed for the `profile` command (calls
+  `claude -p` to structure the resume) and for `score --rerank` (calls
+  `claude -p` once per run to write qualitative fit reasons). Not required for
+  `prefs`, `db`, `discover`, or a plain `score` run.
+- (Optional) **[Ollama](https://ollama.com)** running locally with
+  `mxbai-embed-large` pulled — used by `score`'s `scope` component. Not
+  required: without it, `scope` falls back to deterministic keyword overlap.
 
 Check your Python:
 
@@ -71,7 +78,7 @@ You can also run it as a module without the console script:
 | `jobhunter prefs validate` | Validate `prefs.yaml` against the schema. | ✅ Implemented (US2) |
 | `jobhunter db init` | Create the SQLite job store (`jobs.db`) if absent; idempotent. Prints the path and schema version. | ✅ Implemented (US3) |
 | `jobhunter discover [--source NAME]... [--dry-run]` | Query job sources, normalize, dedup, and persist new postings into `jobs.db`. | ✅ Implemented (M2) |
-| `jobhunter score [--dry-run]` | Hard-filter and composite-score every `state=new` job; persist `score`/`breakdown`/`matched_skills` or `filtered_out`+`reason`; alert once on high scorers. | ✅ Implemented (M3 US1–US3) |
+| `jobhunter score [--dry-run] [--rerank]` | Hard-filter and composite-score every `state=new` job; persist `score`/`breakdown`/`matched_skills` or `filtered_out`+`reason`; alert once on high scorers; optionally re-rank the top survivors with a qualitative LLM pass. | ✅ Implemented (M3, all user stories) |
 
 #### Building your profile
 
@@ -220,8 +227,14 @@ export JOBHUNTER_HOME="$(pwd)/data"
   never alerted twice, no matter how many times `score` reruns. With no topic
   configured, the run still completes and the `alerted` count is still
   reported — only the push itself is skipped.
-- The optional `--rerank` qualitative pass is not yet wired — `reranked` in
-  the summary stays `0` for now.
+- `--rerank` — after scoring, sends the top ~25 `scored` survivors from this
+  run (by `score`) through a single bounded Claude CLI call for a short
+  qualitative fit `reason`, written onto each job's row. Omitted by default —
+  base scoring never calls an LLM, and `reranked` in the summary stays `0`
+  unless the flag is passed. Requires the Claude CLI logged in (same
+  prerequisite as `jobhunter profile`). A re-rank failure or timeout never
+  affects already-persisted scores/alerts — the run still exits `0` and only
+  the qualitative reason is absent.
 
 ### App data location
 
@@ -309,11 +322,11 @@ before the implementation lands (Constitution VII).
 
 **M1 (US1, US2 & US3) complete. M2 (US1, US2 & US3 — single-source discovery, idempotent monitor, and Adzuna + multi-source resilience) complete.**
 
-**M3 (job scoring, filtering & alerting) in progress — US1, US2 & US3 complete.**
+**M3 (job scoring, filtering & alerting) complete — US1, US2, US3 & US4.**
 The store is on schema v2 (`alerted_at`), the local Ollama embeddings client
-is in, and `jobhunter score [--dry-run]` filters, composite-scores, and alerts
-on every `state=new` job end-to-end (see [Scoring jobs](#scoring-jobs) above).
-Only US4 (optional `--rerank` qualitative pass) is still to come.
+is in, and `jobhunter score [--dry-run] [--rerank]` filters, composite-scores,
+alerts, and optionally re-ranks every `state=new` job end-to-end (see
+[Scoring jobs](#scoring-jobs) above).
 
 See [CHANGELOG.md](CHANGELOG.md) for the full per-user-story history, and
 [specs/](specs/) for the specs, plans, and task lists behind each milestone.

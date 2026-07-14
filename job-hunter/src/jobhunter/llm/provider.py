@@ -31,3 +31,16 @@ class LLMProvider(ABC):
         Raises :class:`LLMProviderError` on any failure to produce one.
         """
         raise NotImplementedError
+
+    @abstractmethod
+    def rerank(self, candidates: list[dict], profile: Profile) -> dict[str, str]:
+        """Return a ``{job_id: reason}`` mapping for the given candidates.
+
+        ``candidates`` carries only ``id``/``title``/``description``/
+        ``matched_skills`` per job — never ``prefs.yaml`` content or tracking
+        state (Constitution I). Called at most once per re-rank pass (the
+        caller, ``scoring/rerank.py``, is responsible for bounding
+        ``candidates`` to the top ~25 before calling). Raises
+        :class:`LLMProviderError` on any failure to produce a valid mapping.
+        """
+        raise NotImplementedError

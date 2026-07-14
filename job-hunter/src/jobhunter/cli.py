@@ -169,6 +169,7 @@ def _score_handler(args: argparse.Namespace) -> int:
     from pydantic import ValidationError
 
     from jobhunter import config, obs
+    from jobhunter.llm.claude_cli import ClaudeCLIProvider
     from jobhunter.models.preferences import load_preferences
     from jobhunter.models.profile import load_profile
     from jobhunter.scoring.run import run_scoring
@@ -190,8 +191,13 @@ def _score_handler(args: argparse.Namespace) -> int:
     except ValidationError as exc:
         raise CommandError(f"invalid {prefs_path}: {_format_validation_error(exc)}") from exc
 
+    # --rerank is a strict opt-in addition (US4): base scoring never calls an
+    # LLM, so the provider is only constructed when the flag is passed.
+    provider = ClaudeCLIProvider() if args.rerank else None
     with obs.trace("score.run"):
-        summary = run_scoring(profile, prefs, dry_run=args.dry_run)
+        summary = run_scoring(
+            profile, prefs, dry_run=args.dry_run, rerank=args.rerank, provider=provider
+        )
 
     lines = [
         f"Scoring run {summary.run_id} complete.",
@@ -276,6 +282,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run",
         action="store_true",
         help="Compute filters/scores/alerts, but write nothing to the store.",
+    )
+    p_score.add_argument(
+        "--rerank",
+        action="store_true",
+        help=(
+            "After scoring, send the top ~25 scored survivors through one "
+            "bounded LLM call for a qualitative fit reason. Omitted by "
+            "default — base scoring never calls an LLM."
+        ),
     )
     p_score.set_defaults(func=_score_handler)
 

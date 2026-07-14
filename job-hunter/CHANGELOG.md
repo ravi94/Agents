@@ -5,7 +5,7 @@ story. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
-### M3 — job scoring, filtering & alerting (in progress; see [specs/003-job-scoring-filtering/](specs/003-job-scoring-filtering/))
+### M3 — job scoring, filtering & alerting (complete; see [specs/003-job-scoring-filtering/](specs/003-job-scoring-filtering/))
 
 - **Schema v2** — Bumped the `jobs` store to schema version 2, adding the
   write-once `alerted_at` column. Existing v1 stores are migrated in place via
@@ -37,6 +37,16 @@ story. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   exactly one ntfy push, ever, up to `alerting.max_alerts_per_run` per run.
   Already-alerted jobs are never revisited, no matter how many times `score`
   reruns. `--dry-run` reports the count that *would* alert but sends nothing.
+- **US4 (complete)** — Added the optional `--rerank` qualitative pass: extended
+  the `LLMProvider` seam with `rerank(candidates, profile) -> dict[str, str]`,
+  implemented by `ClaudeCLIProvider` as a single `claude -p` call; the new
+  `scoring/rerank.py` orchestrator bounds this run's scored survivors to the
+  top ~25 by `score`, redacts each candidate to `id`/`title`/`description`/
+  `matched_skills` (never `prefs.yaml` or tracking state), calls the provider
+  exactly once, and writes each returned reason back onto its job. A provider
+  failure/timeout is caught and never affects already-persisted scores/alerts.
+  Strictly opt-in — base scoring never constructs a provider or calls an LLM
+  unless `--rerank` is passed.
 
 ### M2 — job discovery, normalization & dedup (see [specs/002-job-discovery-dedup/](specs/002-job-discovery-dedup/))
 
