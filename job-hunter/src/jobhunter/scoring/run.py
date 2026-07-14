@@ -10,8 +10,13 @@ takes already-constructed `Profile`/`Preferences` (never resolves them itself)
 so fixtures drive the whole pipeline with no live call, and `dry_run` computes
 the same counts but skips every store write (contracts/cli.md).
 
-`alerted`/`reranked` stay `0` here — the alert step (US3) and optional re-rank
-(US4) extend this orchestrator later without changing the filter/score core.
+After scoring, this run's newly-scored jobs (in-memory, not a fresh store
+query) are handed to `scoring.alert.run_alerts` (T025/T027): a job already
+`alerted_at`-set from a prior run is never revisited, since a rescoring run
+only ever processes `state='new'` jobs, so an already-`scored` job simply
+never reaches this loop again (data-model.md's write-once `alerted_at`
+guarantee, FR-009). `reranked` stays `0` here — the optional re-rank (US4)
+extends this orchestrator later without changing the filter/score/alert core.
 """
 
 from __future__ import annotations
@@ -21,6 +26,7 @@ from dataclasses import dataclass
 from jobhunter import obs
 from jobhunter.models.preferences import Preferences
 from jobhunter.models.profile import Profile
+from jobhunter.scoring.alert import run_alerts
 from jobhunter.scoring.filters import apply_filters
 from jobhunter.scoring.scorer import ScoreBreakdown, score_job, to_job_fields
 from jobhunter.store import db
@@ -58,6 +64,7 @@ def run_scoring(
 
     db.init_db()
 
+    newly_scored: list[dict] = []
     with obs.trace("scoring.persist", logger=log):
         for job in db.list_jobs_by_state("new"):
             result = apply_filters(job, prefs)
@@ -78,8 +85,13 @@ def run_scoring(
             ):
                 summary.top_job_title = job.get("title") or job["id"]
                 summary.top_breakdown = score_result.breakdown
+            scored_job = {**job, "state": "scored", **to_job_fields(score_result)}
+            newly_scored.append(scored_job)
             if not dry_run:
-                db.upsert_job({**job, "state": "scored", **to_job_fields(score_result)})
+                db.upsert_job(scored_job)
+
+    if newly_scored:
+        summary.alerted = run_alerts(newly_scored, prefs, dry_run=dry_run)
 
     log.info(
         "score: run complete run_id=%s filtered_out=%d scored=%d alerted=%d reranked=%d",

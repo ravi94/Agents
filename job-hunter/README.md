@@ -71,7 +71,7 @@ You can also run it as a module without the console script:
 | `jobhunter prefs validate` | Validate `prefs.yaml` against the schema. | ✅ Implemented (US2) |
 | `jobhunter db init` | Create the SQLite job store (`jobs.db`) if absent; idempotent. Prints the path and schema version. | ✅ Implemented (US3) |
 | `jobhunter discover [--source NAME]... [--dry-run]` | Query job sources, normalize, dedup, and persist new postings into `jobs.db`. | ✅ Implemented (M2) |
-| `jobhunter score [--dry-run]` | Hard-filter and composite-score every `state=new` job; persist `score`/`breakdown`/`matched_skills` or `filtered_out`+`reason`. | ✅ Implemented (M3 US1) |
+| `jobhunter score [--dry-run]` | Hard-filter and composite-score every `state=new` job; persist `score`/`breakdown`/`matched_skills` or `filtered_out`+`reason`; alert once on high scorers. | ✅ Implemented (M3 US1–US3) |
 
 #### Building your profile
 
@@ -213,9 +213,15 @@ export JOBHUNTER_HOME="$(pwd)/data"
   ```
 - Rerunning `score` only ever processes jobs currently `state=new` — already
   `filtered_out`/`scored` rows are left untouched, so reruns are idempotent.
-- Alerting (`alerted_at`, ntfy notification on high scorers) and the optional
-  `--rerank` qualitative pass are not yet wired — both `alerted` and
-  `reranked` in the summary stay `0` for now.
+- A newly-scored job at or above `prefs.yaml`'s `alerting.score_threshold`
+  gets exactly one [ntfy](https://ntfy.sh) push, ever, up to
+  `alerting.max_alerts_per_run` per run (same `JOBHUNTER_NTFY_TOPIC` topic as
+  the error signal — see [Logs & monitoring](#logs--monitoring)). A job is
+  never alerted twice, no matter how many times `score` reruns. With no topic
+  configured, the run still completes and the `alerted` count is still
+  reported — only the push itself is skipped.
+- The optional `--rerank` qualitative pass is not yet wired — `reranked` in
+  the summary stays `0` for now.
 
 ### App data location
 
@@ -255,12 +261,32 @@ tail -f "$JOBHUNTER_HOME/logs/jobhunter.log"   # or ~/.job-hunter/logs/jobhunter
 ```
 
 The file rotates by size (bounded backups) so it never grows unbounded. To get a
-push notification when a run fails, set an [ntfy](https://ntfy.sh) topic — leave
-it unset to disable notifications:
+push notification, set an [ntfy](https://ntfy.sh) topic — leave it unset to
+disable notifications. The same topic is used for two things: a whole-run
+failure signal (M1/M2) and, since M3, a push on every job that clears your
+`prefs.yaml` `alerting.score_threshold`:
 
 ```bash
 export JOBHUNTER_NTFY_TOPIC="my-jobhunter-alerts"
 ```
+
+ntfy topics on the public `ntfy.sh` server are just URL paths — anyone who
+knows (or guesses) your topic name can read your notifications, so pick
+something long and unpredictable (e.g. `jobhunter-a7f3c9d2`), not `alerts`.
+
+To actually receive the push:
+
+- **Browser** — open `https://ntfy.sh/<your-topic>` and leave the tab open
+  (it uses server-sent events, no install needed).
+- **Phone/desktop app** — install the [ntfy app](https://ntfy.sh/#subscribe),
+  then subscribe to your topic name.
+- **Self-hosted** — point `topic_env`/the ntfy base URL at your own server
+  instead of `ntfy.sh` if you'd rather not use the public one (not wired up
+  as a separate env var yet — edit `obs.py`'s `_post` if you need this now).
+
+Subscribe *before* running `jobhunter score` or `discover`, since ntfy only
+delivers to whoever's listening at send time (no offline queueing on the free
+tier).
 
 ## Development
 
@@ -283,12 +309,11 @@ before the implementation lands (Constitution VII).
 
 **M1 (US1, US2 & US3) complete. M2 (US1, US2 & US3 — single-source discovery, idempotent monitor, and Adzuna + multi-source resilience) complete.**
 
-**M3 (job scoring, filtering & alerting) in progress — US1 (MVP) complete.**
+**M3 (job scoring, filtering & alerting) in progress — US1, US2 & US3 complete.**
 The store is on schema v2 (`alerted_at`), the local Ollama embeddings client
-is in, and `jobhunter score [--dry-run]` filters and composite-scores every
-`state=new` job end-to-end (see [Scoring jobs](#scoring-jobs) above). US2
-(explainability hardening), US3 (threshold alerting), and US4 (optional
-`--rerank`) are still to come.
+is in, and `jobhunter score [--dry-run]` filters, composite-scores, and alerts
+on every `state=new` job end-to-end (see [Scoring jobs](#scoring-jobs) above).
+Only US4 (optional `--rerank` qualitative pass) is still to come.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full per-user-story history, and
 [specs/](specs/) for the specs, plans, and task lists behind each milestone.

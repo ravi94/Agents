@@ -177,6 +177,24 @@ def list_jobs_by_state(state: str, path: Path | None = None) -> list[dict]:
     return [dict(row) for row in rows]
 
 
+def mark_alerted(job_id: str, path: Path | None = None) -> bool:
+    """Write-once stamp ``alerted_at`` to now for ``job_id`` (T025/T026).
+
+    Only takes effect while ``alerted_at`` is still ``NULL``; a job already
+    alerted is left untouched no matter how many times this is called, which
+    is the mechanism FR-009 relies on for "at most one notification, ever."
+    Returns ``False`` if ``job_id`` is absent or was already alerted.
+    """
+    target = path or config.db_path()
+    with _connect(target) as conn:
+        cursor = conn.execute(
+            "UPDATE jobs SET alerted_at = ? WHERE id = ? AND alerted_at IS NULL",
+            (_now(), job_id),
+        )
+        conn.commit()
+    return cursor.rowcount > 0
+
+
 def touch_last_seen(job_id: str, path: Path | None = None) -> bool:
     """Advance ``last_seen`` to now for ``job_id``; a pure re-sighting, not a change.
 

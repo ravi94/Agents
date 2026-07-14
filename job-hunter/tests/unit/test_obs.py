@@ -109,3 +109,36 @@ def test_notify_error_swallows_post_failure(monkeypatch):
 
     # A failed notification must never crash the run.
     assert obs.notify_error("boom") is False
+
+
+# T023 [P] [US3] — obs.notify: generalized alert path, mirrors notify_error above.
+# Expected to fail until T024 adds obs.notify.
+def test_notify_is_noop_without_topic(monkeypatch):
+    monkeypatch.delenv("JOBHUNTER_NTFY_TOPIC", raising=False)
+    assert obs.notify("something to say") is False
+
+
+def test_notify_posts_when_topic_set(monkeypatch):
+    monkeypatch.setenv("JOBHUNTER_NTFY_TOPIC", "my-topic")
+    sent = {}
+
+    def fake_post(url, data):
+        sent["url"] = url
+        sent["data"] = data
+
+    monkeypatch.setattr(obs, "_post", fake_post)
+
+    assert obs.notify("new match found") is True
+    assert "my-topic" in sent["url"]
+
+
+def test_notify_swallows_post_failure(monkeypatch):
+    monkeypatch.setenv("JOBHUNTER_NTFY_TOPIC", "my-topic")
+
+    def boom(url, data):
+        raise OSError("network down")
+
+    monkeypatch.setattr(obs, "_post", boom)
+
+    # A failed notification must never crash the run.
+    assert obs.notify("new match found") is False

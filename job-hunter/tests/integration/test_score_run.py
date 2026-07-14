@@ -94,7 +94,10 @@ def test_scoring_run_filters_and_scores_fixture_jobs(profile, prefs, scoring_job
     # in the task brief).
     assert summary.filtered_out == 6
     assert summary.scored == 3
-    assert summary.alerted == 0
+    # 2 of the 3 scored fixture jobs clear the fixture prefs' 0.75 alert
+    # threshold (US3); alerted_at is stamped even with no ntfy topic set in
+    # the test env (FR-010 — only the push itself is skipped, not the count).
+    assert summary.alerted == 2
     assert summary.reranked == 0
 
     filtered = db.get_job("scoring:job-fail-comp")

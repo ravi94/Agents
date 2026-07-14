@@ -98,17 +98,17 @@ description: "Task list for Job Scoring, Filtering & Alerting (M3)"
 
 ### Tests for User Story 3 (write first, confirm failing) ⚠️
 
-- [ ] T021 [P] [US3] Unit test alert gating and write-once semantics in `tests/unit/test_alert.py`: `score >= threshold` and `alerted_at IS NULL` → notify + `alerted_at` stamped; `score < threshold` → no notify, `alerted_at` stays `NULL`; `alerted_at` already set → no notify regardless of the current score (mocks `obs.notify`).
-- [ ] T022 [P] [US3] Integration test the no-double-alert guarantee in `tests/integration/test_score_rerun_no_realert.py`: two scoring runs over the same above-threshold fixture job → exactly one notification total across both runs; `alerted_at` set once and unchanged on the second run.
-- [ ] T023 [P] [US3] Unit test the generalized notify path in `tests/unit/test_obs.py` (extend): `obs.notify(message)` posts when a topic is configured, no-ops otherwise, and never raises on a failed post — mirrors the existing `notify_error` tests.
+- [x] T021 [P] [US3] Unit test alert gating and write-once semantics in `tests/unit/test_alert.py`: `score >= threshold` and `alerted_at IS NULL` → notify + `alerted_at` stamped; `score < threshold` → no notify, `alerted_at` stays `NULL`; `alerted_at` already set → no notify regardless of the current score (mocks `obs.notify`).
+- [x] T022 [P] [US3] Integration test the no-double-alert guarantee in `tests/integration/test_score_rerun_no_realert.py`: two scoring runs over the same above-threshold fixture job → exactly one notification total across both runs; `alerted_at` set once and unchanged on the second run.
+- [x] T023 [P] [US3] Unit test the generalized notify path in `tests/unit/test_obs.py` (extend): `obs.notify(message)` posts when a topic is configured, no-ops otherwise, and never raises on a failed post — mirrors the existing `notify_error` tests.
 
 ### Implementation for User Story 3
 
-- [ ] T024 [US3] Generalize `obs.notify_error`'s POST helper into `obs.notify(message)` in `src/jobhunter/obs.py`, used by both the existing error path and the new alert path — satisfies T023.
-- [ ] T025 [US3] Implement the alert step in `src/jobhunter/scoring/alert.py`: for this run's `state=scored` jobs with `alerted_at IS NULL` and `score >= alerting.score_threshold`, up to `alerting.max_alerts_per_run`, call `obs.notify` and stamp `alerted_at` — depends on T024; satisfies T021.
-- [ ] T026 [US3] Add the write-once `alerted_at` update seam to `src/jobhunter/store/db.py` (a narrow `mark_alerted(id)` function analogous to M2's `touch_last_seen`) — depends on T005.
-- [ ] T027 [US3] Wire the alert step into the orchestrator in `src/jobhunter/scoring/run.py`: after scoring, run `alert.py` over this run's newly-scored jobs; add `alerted` to `ScoreRunSummary` — depends on T014, T025, T026; satisfies T022.
-- [ ] T028 [US3] Extend observability: trace the alert send (metadata only — job id, outcome, never job content) and include `alerted` in the per-run summary log line.
+- [x] T024 [US3] Generalize `obs.notify_error`'s POST helper into `obs.notify(message)` in `src/jobhunter/obs.py`, used by both the existing error path and the new alert path — satisfies T023.
+- [x] T025 [US3] Implement the alert step in `src/jobhunter/scoring/alert.py`: for this run's `state=scored` jobs with `alerted_at IS NULL` and `score >= alerting.score_threshold`, up to `alerting.max_alerts_per_run`, call `obs.notify` and stamp `alerted_at` — depends on T024; satisfies T021.
+- [x] T026 [US3] Add the write-once `alerted_at` update seam to `src/jobhunter/store/db.py` (a narrow `mark_alerted(id)` function analogous to M2's `touch_last_seen`) — depends on T005.
+- [x] T027 [US3] Wire the alert step into the orchestrator in `src/jobhunter/scoring/run.py`: after scoring, run `alert.py` over this run's newly-scored jobs; add `alerted` to `ScoreRunSummary` — depends on T014, T025, T026; satisfies T022.
+- [x] T028 [US3] Extend observability: trace the alert send (metadata only — job id, outcome, never job content) and include `alerted` in the per-run summary log line.
 
 **Checkpoint**: Alerting is idempotent and dependable. US1–US3 all independently functional.
 

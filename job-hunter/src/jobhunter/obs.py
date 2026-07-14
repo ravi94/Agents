@@ -134,12 +134,14 @@ def _post(url: str, data: bytes) -> None:
     urllib.request.urlopen(request, timeout=5)  # noqa: S310 — fixed https ntfy endpoint
 
 
-def notify_error(message: str, *, topic_env: str = _NTFY_TOPIC_ENV) -> bool:
-    """Push an error signal to ntfy if a topic is configured; best-effort.
+def notify(message: str, *, topic_env: str = _NTFY_TOPIC_ENV) -> bool:
+    """Push a notification to ntfy if a topic is configured; best-effort.
 
     Returns True if a notification was sent. A missing topic is a no-op (False),
     and a failed post is logged and swallowed (False) — monitoring must never
-    become a new failure mode.
+    become a new failure mode. Shared by the error path (`notify_error`) and
+    the alerting path (`scoring/alert.py`) — one notification channel
+    (research.md §5), just different callers/content.
     """
     topic = os.environ.get(topic_env)
     if not topic:
@@ -150,3 +152,8 @@ def notify_error(message: str, *, topic_env: str = _NTFY_TOPIC_ENV) -> bool:
     except Exception:  # noqa: BLE001 — notification is best-effort
         get_logger("obs").warning("ntfy notification failed")
         return False
+
+
+def notify_error(message: str, *, topic_env: str = _NTFY_TOPIC_ENV) -> bool:
+    """Push an error signal to ntfy if a topic is configured; best-effort."""
+    return notify(message, topic_env=topic_env)

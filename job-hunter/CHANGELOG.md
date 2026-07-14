@@ -26,6 +26,17 @@ story. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   `filtered_out`/`scored`/`alerted`/`reranked` run summary; the embeddings call
   is traced (metadata only) with the keyword-overlap fallback logged, and a
   whole-run failure fires the existing ntfy error signal.
+- **US2 (complete)** — Hardened explainability: `score` and `breakdown` are
+  always written together (never one without the other), and the CLI summary
+  now surfaces the top-scoring job's title plus its top contributing factor
+  (`format_breakdown`) without a separate query.
+- **US3 (complete)** — Added threshold alerting: generalized `obs.notify_error`
+  into a shared `obs.notify(message)`, added a write-once `mark_alerted`
+  store seam, and wired an alert step into the orchestrator — a `state=scored`
+  job at/above `alerting.score_threshold` with `alerted_at IS NULL` gets
+  exactly one ntfy push, ever, up to `alerting.max_alerts_per_run` per run.
+  Already-alerted jobs are never revisited, no matter how many times `score`
+  reruns. `--dry-run` reports the count that *would* alert but sends nothing.
 
 ### M2 — job discovery, normalization & dedup (see [specs/002-job-discovery-dedup/](specs/002-job-discovery-dedup/))
 

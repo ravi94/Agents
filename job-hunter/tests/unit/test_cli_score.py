@@ -93,7 +93,10 @@ def test_score_run_filters_and_scores_fixture_jobs(capsys, _isolated_home):
     assert err == ""
     assert out.startswith("Scoring run ")
     assert "complete." in out
-    assert "filtered_out: 6   scored: 3   alerted: 0   reranked: 0" in out
+    # 2 of the 3 scored fixture jobs clear the fixture prefs' 0.75 alert
+    # threshold; `alerted_at` is still stamped even with no ntfy topic
+    # configured in the test env (FR-010 — only the actual push is skipped).
+    assert "filtered_out: 6   scored: 3   alerted: 2   reranked: 0" in out
 
 
 def test_summary_surfaces_top_job_and_its_top_contributing_factor(capsys, _isolated_home):
@@ -131,10 +134,13 @@ def test_dry_run_writes_nothing_and_exits_zero(capsys, _isolated_home):
 
     assert rc == 0
     out, _err = capsys.readouterr()
-    assert "filtered_out: 6   scored: 3   alerted: 0   reranked: 0" in out
+    # dry-run still reports the count that *would* be alerted, but writes
+    # nothing — checked below via alerted_at staying null on every row.
+    assert "filtered_out: 6   scored: 3   alerted: 2   reranked: 0" in out
     for job in jobs:
         stored = db.get_job(job["id"])
         assert stored["state"] == "new"
+        assert stored["alerted_at"] is None
 
 
 def test_summary_run_id_matches_log_correlation_id(capsys, _isolated_home):
