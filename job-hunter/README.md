@@ -71,6 +71,7 @@ You can also run it as a module without the console script:
 | `jobhunter prefs validate` | Validate `prefs.yaml` against the schema. | ✅ Implemented (US2) |
 | `jobhunter db init` | Create the SQLite job store (`jobs.db`) if absent; idempotent. Prints the path and schema version. | ✅ Implemented (US3) |
 | `jobhunter discover [--source NAME]... [--dry-run]` | Query job sources, normalize, dedup, and persist new postings into `jobs.db`. | ✅ Implemented (M2) |
+| `jobhunter score [--dry-run]` | Hard-filter and composite-score every `state=new` job; persist `score`/`breakdown`/`matched_skills` or `filtered_out`+`reason`. | ✅ Implemented (M3 US1) |
 
 #### Building your profile
 
@@ -177,6 +178,45 @@ export JOBHUNTER_HOME="$(pwd)/data"
 Without these keys, `discover` still runs — it just reports the corresponding
 source(s) as failed/unavailable in the summary and moves on (exit code `0`).
 
+#### Scoring jobs
+
+`jobhunter score` runs a hard-filter gate over every `state=new` job, then
+computes a composite score (`comp`, `scope`, `stability`, `work_life_balance`)
+against `prefs.yaml`'s soft weights and `profile.json`. Requires `profile.json`
+and `prefs.yaml` to already exist (same preconditions as `discover`):
+
+```bash
+export JOBHUNTER_HOME="$(pwd)/data"
+.venv/bin/jobhunter score
+# -> Scoring run <run-id> complete.
+#      filtered_out: N   scored: N   alerted: 0   reranked: 0
+```
+
+- `--dry-run` — compute filters/scores but write nothing to the store (safe to inspect).
+- Jobs failing a hard filter (`locations`, `work_modes`, `company_types_allow`/
+  `deny`, `comp_floor_lpa`, `seniority_floor`) become `state=filtered_out` with a
+  `reason` naming every failed dimension; missing data for a dimension passes
+  through rather than failing it.
+- Surviving jobs become `state=scored` with a persisted `score` (`0.0`–`1.0`),
+  a JSON `breakdown` (per-component value/weight/inferred), and a JSON
+  `matched_skills` list — `score` and `breakdown` are always written together,
+  never one without the other.
+- The `scope` component uses a local [Ollama](https://ollama.com) embedding
+  (`mxbai-embed-large`) to compare the job text against your profile's skills
+  and roles. **No Ollama setup is required** — if the local endpoint is
+  unreachable, `scope` transparently falls back to deterministic keyword
+  overlap and the run still completes and persists scores. To use real
+  embeddings instead:
+  ```bash
+  ollama pull mxbai-embed-large
+  ollama serve
+  ```
+- Rerunning `score` only ever processes jobs currently `state=new` — already
+  `filtered_out`/`scored` rows are left untouched, so reruns are idempotent.
+- Alerting (`alerted_at`, ntfy notification on high scorers) and the optional
+  `--rerank` qualitative pass are not yet wired — both `alerted` and
+  `reranked` in the summary stay `0` for now.
+
 ### App data location
 
 All state resolves under the app data directory. The default is `~/.job-hunter/`,
@@ -243,12 +283,12 @@ before the implementation lands (Constitution VII).
 
 **M1 (US1, US2 & US3) complete. M2 (US1, US2 & US3 — single-source discovery, idempotent monitor, and Adzuna + multi-source resilience) complete.**
 
-**M3 (job scoring, filtering & alerting) in progress** — the store is on schema
-v2 (`alerted_at`), the local Ollama embeddings client is in, and the US1 scoring
-engine (hard filters + composite scorer + `filter → score → persist`
-orchestrator) is built and tested. The `jobhunter score` CLI command that
-exposes it is not yet wired; running it end-to-end (and its optional
-local-Ollama `scope` component) will be documented here when it lands.
+**M3 (job scoring, filtering & alerting) in progress — US1 (MVP) complete.**
+The store is on schema v2 (`alerted_at`), the local Ollama embeddings client
+is in, and `jobhunter score [--dry-run]` filters and composite-scores every
+`state=new` job end-to-end (see [Scoring jobs](#scoring-jobs) above). US2
+(explainability hardening), US3 (threshold alerting), and US4 (optional
+`--rerank`) are still to come.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full per-user-story history, and
 [specs/](specs/) for the specs, plans, and task lists behind each milestone.

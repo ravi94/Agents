@@ -122,6 +122,8 @@ for the stdout summary — mirrors M2's `RunSummary` shape).
 | `alerted` | `int` | notifications actually sent this run. |
 | `reranked` | `int` | jobs annotated by the optional LLM pass (`0` if `--rerank` not passed). |
 | `run_id` | `str` | correlation id (from `obs`, reused as in M2). |
+| `top_job_title` | `str \| None` | title of this run's highest-`overall`-scoring job; `None` if nothing was scored (SC-004). |
+| `top_breakdown` | `ScoreBreakdown \| None` | that job's breakdown, so the CLI can render its top contributing factor (`format_breakdown`) without a separate query; `None` if nothing was scored. |
 
 ---
 

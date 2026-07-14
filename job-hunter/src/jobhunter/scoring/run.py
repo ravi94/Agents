@@ -16,26 +16,32 @@ the same counts but skips every store write (contracts/cli.md).
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 
 from jobhunter import obs
 from jobhunter.models.preferences import Preferences
 from jobhunter.models.profile import Profile
 from jobhunter.scoring.filters import apply_filters
-from jobhunter.scoring.scorer import score_job
+from jobhunter.scoring.scorer import ScoreBreakdown, score_job, to_job_fields
 from jobhunter.store import db
 
 
 @dataclass
 class ScoreRunSummary:
-    """Aggregate outcome of one scoring run (data-model.md "ScoreRunSummary")."""
+    """Aggregate outcome of one scoring run (data-model.md "ScoreRunSummary").
+
+    `top_job_title`/`top_breakdown` name this run's highest-`overall`-scoring
+    job so the CLI can surface its top contributing factor without a separate
+    query (SC-004) — `None` when nothing was scored this run.
+    """
 
     filtered_out: int = 0
     scored: int = 0
     alerted: int = 0
     reranked: int = 0
     run_id: str = ""
+    top_job_title: str | None = None
+    top_breakdown: ScoreBreakdown | None = None
 
 
 def run_scoring(
@@ -66,16 +72,14 @@ def run_scoring(
             # row never carries a null breakdown (data-model.md atomicity rule).
             score_result = score_job(job, profile, prefs)
             summary.scored += 1
+            if (
+                summary.top_breakdown is None
+                or score_result.breakdown.overall > summary.top_breakdown.overall
+            ):
+                summary.top_job_title = job.get("title") or job["id"]
+                summary.top_breakdown = score_result.breakdown
             if not dry_run:
-                db.upsert_job(
-                    {
-                        **job,
-                        "state": "scored",
-                        "score": score_result.breakdown.overall,
-                        "breakdown": score_result.breakdown.model_dump_json(),
-                        "matched_skills": json.dumps(score_result.matched_skills),
-                    }
-                )
+                db.upsert_job({**job, "state": "scored", **to_job_fields(score_result)})
 
     log.info(
         "score: run complete run_id=%s filtered_out=%d scored=%d alerted=%d reranked=%d",

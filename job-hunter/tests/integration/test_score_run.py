@@ -125,6 +125,42 @@ def test_scoring_run_filters_and_scores_fixture_jobs(profile, prefs, scoring_job
     assert isinstance(matched_skills, list)
 
 
+def test_summary_names_the_top_scored_job_and_its_breakdown(profile, prefs, scoring_jobs):
+    """T020 — SC-004: the top contributing factor is legible without a
+    separate query, so the summary itself must carry the highest-ranked
+    job's title and breakdown, not just aggregate counts."""
+    _seed(scoring_jobs)
+
+    summary = run_scoring(profile, prefs)
+
+    assert summary.top_job_title is not None
+    assert summary.top_breakdown is not None
+
+    all_scored_titles = {
+        job["title"]
+        for job in scoring_jobs
+        if db.get_job(job["id"])["state"] == "scored"
+    }
+    assert summary.top_job_title in all_scored_titles
+
+    best_score = max(
+        db.get_job(job["id"])["score"]
+        for job in scoring_jobs
+        if db.get_job(job["id"])["state"] == "scored"
+    )
+    assert summary.top_breakdown.overall == pytest.approx(best_score)
+
+
+def test_no_scored_jobs_leaves_top_fields_unset(profile, prefs):
+    db.init_db()  # no `state='new'` jobs seeded — nothing to filter or score
+
+    summary = run_scoring(profile, prefs)
+
+    assert summary.scored == 0
+    assert summary.top_job_title is None
+    assert summary.top_breakdown is None
+
+
 def test_dry_run_reports_summary_but_writes_nothing(profile, prefs, scoring_jobs):
     _seed(scoring_jobs)
 

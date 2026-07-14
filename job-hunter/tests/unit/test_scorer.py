@@ -38,10 +38,14 @@ verified elsewhere in the repo):
 
 from __future__ import annotations
 
+import json
+import logging
 import math
+from logging.handlers import RotatingFileHandler
 
 import pytest
 
+from jobhunter import config, obs
 from jobhunter.models.preferences import (
     Alerting,
     HardFilters,
@@ -50,7 +54,31 @@ from jobhunter.models.preferences import (
     SoftWeights,
 )
 from jobhunter.models.profile import Profile
-from jobhunter.scoring.scorer import score_job
+from jobhunter.scoring.scorer import (
+    ComponentScore,
+    ScoreBreakdown,
+    format_breakdown,
+    score_job,
+    to_job_fields,
+)
+
+
+@pytest.fixture
+def _isolated_run_log(monkeypatch, tmp_path):
+    """Configure a real run log under an isolated home (T016 trace tests)."""
+    monkeypatch.setenv("JOBHUNTER_HOME", str(tmp_path))
+    obs.configure_run_logging()
+    yield
+    root = logging.getLogger("jobhunter")
+    for handler in list(root.handlers):
+        if isinstance(handler, RotatingFileHandler):
+            root.removeHandler(handler)
+            handler.close()
+
+
+def _flush() -> None:
+    for handler in logging.getLogger("jobhunter").handlers:
+        handler.flush()
 
 COMPONENT_NAMES = ("work_life_balance", "stability", "scope", "comp")
 
@@ -379,3 +407,100 @@ def test_soft_weights_are_copied_verbatim_and_not_renormalized(monkeypatch):
         )
     assert breakdown.overall <= sum(under_summed_weights.values()) + 1e-9
     assert not math.isclose(breakdown.overall, 1.0)
+
+
+# ---------------------------------------------------------------------------
+# to_job_fields (T019): score/breakdown/matched_skills travel together
+# ---------------------------------------------------------------------------
+
+
+def test_to_job_fields_derives_score_and_breakdown_from_the_same_result(monkeypatch):
+    monkeypatch.setattr("jobhunter.embeddings.ollama.embed", _generic_fake_embed)
+
+    result = score_job(_job(salary="45 LPA"), _profile(), _prefs())
+    fields = to_job_fields(result)
+
+    assert set(fields) == {"score", "breakdown", "matched_skills"}
+    assert fields["score"] == pytest.approx(result.breakdown.overall)
+
+    breakdown = json.loads(fields["breakdown"])
+    assert breakdown["overall"] == pytest.approx(result.breakdown.overall)
+    assert set(breakdown["components"]) == set(COMPONENT_NAMES)
+
+    assert json.loads(fields["matched_skills"]) == result.matched_skills
+
+
+# ---------------------------------------------------------------------------
+# format_breakdown (T020): the top contributing factor, legible without a
+# separate query (SC-004).
+# ---------------------------------------------------------------------------
+
+
+def _breakdown(**component_overrides: tuple[float, float, bool]) -> ScoreBreakdown:
+    """Build a `ScoreBreakdown` from `{name: (value, weight, inferred)}`."""
+    components = {
+        name: ComponentScore(value=value, weight=weight, inferred=inferred)
+        for name, (value, weight, inferred) in component_overrides.items()
+    }
+    overall = sum(c.value * c.weight for c in components.values())
+    return ScoreBreakdown(
+        overall=overall, components=components, computed_at="2026-01-01T00:00:00+00:00"
+    )
+
+
+def test_format_breakdown_names_the_highest_weighted_contribution():
+    # comp has the higher raw value (1.0 vs scope's 0.9), but scope's weighted
+    # contribution (0.9*0.5=0.45) still edges out comp's (1.0*0.4=0.40) —
+    # proving the helper ranks by value*weight, not raw component value alone.
+    breakdown = _breakdown(
+        work_life_balance=(0.1, 0.05, True),
+        stability=(0.1, 0.05, True),
+        scope=(0.9, 0.5, False),
+        comp=(1.0, 0.4, False),
+    )
+
+    rendered = format_breakdown(breakdown)
+
+    assert rendered.startswith("scope")
+    assert "stability" not in rendered
+
+
+def test_format_breakdown_includes_the_numeric_contribution():
+    breakdown = _breakdown(
+        work_life_balance=(0.5, 0.2, True),
+        stability=(0.5, 0.2, True),
+        scope=(0.8, 0.35, False),
+        comp=(0.5, 0.25, False),
+    )
+
+    rendered = format_breakdown(breakdown)
+
+    assert "0.80" in rendered  # scope's raw value
+    assert "0.35" in rendered  # scope's weight
+
+
+# ---------------------------------------------------------------------------
+# observability (T016): the embeddings call is traced; its fallback is logged
+# ---------------------------------------------------------------------------
+
+
+def test_embeddings_call_is_traced(monkeypatch, _isolated_run_log):
+    monkeypatch.setattr("jobhunter.embeddings.ollama.embed", _generic_fake_embed)
+
+    score_job(_job(salary="45 LPA"), _profile(), _prefs())
+    _flush()
+
+    contents = config.log_path().read_text()
+    assert "embeddings.embed" in contents
+    assert "duration_ms" in contents
+
+
+def test_embeddings_fallback_is_logged_when_embed_returns_none(monkeypatch, _isolated_run_log):
+    monkeypatch.setattr("jobhunter.embeddings.ollama.embed", _none_fake_embed)
+
+    score_job(_job(salary="45 LPA"), _profile(), _prefs())
+    _flush()
+
+    contents = config.log_path().read_text()
+    assert "embeddings.embed" in contents
+    assert "fall" in contents.lower()  # "falling back" / "fallback" logged

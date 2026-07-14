@@ -14,7 +14,7 @@ story. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   `scope` score component) that returns `None` on any failure instead of
   raising, so callers get a clean fallback signal — never a live-call
   dependency.
-- **US1 (in progress)** — Landed the scoring engine: the hard-filter gate
+- **US1 (MVP, complete)** — Landed the scoring engine: the hard-filter gate
   (`prefs.yaml` locations / work modes / company types / comp floor / seniority
   floor, with missing data treated as pass-through), the composite scorer
   (`comp`/`stability`/`work_life_balance`/`scope` components + matched skills,
@@ -22,7 +22,10 @@ story. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   `filter → score → persist` orchestrator (filtered jobs → `state=filtered_out`
   with a reason; survivors → `state=scored` with `score`/`breakdown`/
   `matched_skills` written atomically; `dry_run` reports counts but writes
-  nothing). The `jobhunter score` CLI command is not yet wired.
+  nothing). Wired up as `jobhunter score [--dry-run]`, printing the
+  `filtered_out`/`scored`/`alerted`/`reranked` run summary; the embeddings call
+  is traced (metadata only) with the keyword-overlap fallback logged, and a
+  whole-run failure fires the existing ntfy error signal.
 
 ### M2 — job discovery, normalization & dedup (see [specs/002-job-discovery-dedup/](specs/002-job-discovery-dedup/))
 

@@ -164,6 +164,48 @@ def _discover_handler(args: argparse.Namespace) -> int:
     return 0
 
 
+def _score_handler(args: argparse.Namespace) -> int:
+    """Filter, score, and persist every `state='new'` job (M3, US1 -> T015)."""
+    from pydantic import ValidationError
+
+    from jobhunter import config, obs
+    from jobhunter.models.preferences import load_preferences
+    from jobhunter.models.profile import load_profile
+    from jobhunter.scoring.run import run_scoring
+    from jobhunter.scoring.scorer import format_breakdown
+
+    profile_path = config.profile_path()
+    if not profile_path.exists():
+        raise CommandError(f"{profile_path} not found — run 'jobhunter profile <resume.pdf>' first")
+    prefs_path = config.prefs_path()
+    if not prefs_path.exists():
+        raise CommandError(f"{prefs_path} not found — run 'jobhunter prefs init' first")
+
+    try:
+        profile = load_profile(profile_path)
+    except (ValidationError, ValueError) as exc:
+        raise CommandError(f"invalid {profile_path}: {exc}") from exc
+    try:
+        prefs = load_preferences(prefs_path)
+    except ValidationError as exc:
+        raise CommandError(f"invalid {prefs_path}: {_format_validation_error(exc)}") from exc
+
+    with obs.trace("score.run"):
+        summary = run_scoring(profile, prefs, dry_run=args.dry_run)
+
+    lines = [
+        f"Scoring run {summary.run_id} complete.",
+        f"  filtered_out: {summary.filtered_out}   scored: {summary.scored}   "
+        f"alerted: {summary.alerted}   reranked: {summary.reranked}",
+    ]
+    if summary.top_breakdown is not None:
+        lines.append(
+            f"  top: {summary.top_job_title!r} — {format_breakdown(summary.top_breakdown)}"
+        )
+    print("\n".join(lines))
+    return 0
+
+
 def _db_init_handler(_args: argparse.Namespace) -> int:
     """Create the durable SQLite job store if absent, idempotently (US3)."""
     from jobhunter import obs
@@ -225,6 +267,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="Fetch, normalize, and dedup, but write nothing to the store.",
     )
     p_discover.set_defaults(func=_discover_handler)
+
+    # score [--dry-run]  (M3 US1 -> T015)
+    p_score = subparsers.add_parser(
+        "score", help="Filter and score every state='new' job against profile/prefs."
+    )
+    p_score.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Compute filters/scores/alerts, but write nothing to the store.",
+    )
+    p_score.set_defaults(func=_score_handler)
 
     # db init  (US3 -> T025)
     p_db = subparsers.add_parser("db", help="Manage the SQLite job store (jobs.db).")

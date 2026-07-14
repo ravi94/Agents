@@ -23,12 +23,14 @@ direct ``from ... import embed``) so tests can monkeypatch
 
 from __future__ import annotations
 
+import json
 import re
 from datetime import datetime, timezone
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
+from jobhunter import obs
 from jobhunter.embeddings import ollama
 from jobhunter.models.preferences import Preferences
 from jobhunter.models.profile import Profile
@@ -127,7 +129,14 @@ def score_job(job: dict, profile: Profile, prefs: Preferences) -> ScoreResult:
     job_text = f"{job.get('title', '')} {job.get('description', '')}".strip()
     profile_text = " ".join(profile.skills + list(profile.roles))
 
-    job_vec = ollama.embed(job_text)
+    log = obs.get_logger("scoring")
+    with obs.trace("embeddings.embed", logger=log):
+        job_vec = ollama.embed(job_text)
+    if job_vec is None:
+        log.warning(
+            "embeddings.embed: no vector returned; falling back to keyword overlap "
+            "for scope/matched_skills"
+        )
 
     scope_value = _scope(job_text, profile_text, job_vec)
     matched = _matched_skills(job_text, profile.skills, job_vec)
@@ -158,6 +167,36 @@ def score_job(job: dict, profile: Profile, prefs: Preferences) -> ScoreResult:
         computed_at=datetime.now(timezone.utc).isoformat(),
     )
     return ScoreResult(breakdown=breakdown, matched_skills=matched)
+
+
+def format_breakdown(breakdown: ScoreBreakdown) -> str:
+    """Render the single component contributing most to `overall` (SC-004).
+
+    Ranked by weighted contribution (`value * weight`), not raw component
+    value, so a high-value-but-low-weight component never outranks the
+    factor that actually moved the score most.
+    """
+    name, component = max(
+        breakdown.components.items(), key=lambda item: item[1].value * item[1].weight
+    )
+    contribution = component.value * component.weight
+    return f"{name} (value={component.value:.2f}, weight={component.weight:.2f}, contribution={contribution:.2f})"
+
+
+def to_job_fields(result: ScoreResult) -> dict:
+    """Package a `ScoreResult` into the store's `score`/`breakdown`/
+    `matched_skills` columns (data-model.md's atomicity rule).
+
+    The single place a caller reads these three fields from — there is no
+    other path to a `score` value that doesn't come attached to its
+    `breakdown`, so `run.py` (or any future caller) can't accidentally
+    persist one without the other.
+    """
+    return {
+        "score": result.breakdown.overall,
+        "breakdown": result.breakdown.model_dump_json(),
+        "matched_skills": json.dumps(result.matched_skills),
+    }
 
 
 # ---------------------------------------------------------------------------

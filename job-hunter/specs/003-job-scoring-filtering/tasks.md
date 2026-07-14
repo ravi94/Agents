@@ -63,8 +63,8 @@ description: "Task list for Job Scoring, Filtering & Alerting (M3)"
 - [x] T012 [P] [US1] Implement the hard-filter gate in `src/jobhunter/scoring/filters.py`: produce a `FilterResult` per job per [contracts/scoring_algorithm.md](./contracts/scoring_algorithm.md) — satisfies T008.
 - [x] T013 [US1] Implement the composite scorer in `src/jobhunter/scoring/scorer.py`: `comp`/`stability`/`work_life_balance` deterministic components + `scope` via `embeddings.ollama.embed` (keyword-overlap fallback when it returns `None`) + `matched_skills` selection + `ScoreBreakdown` assembly — depends on T007; satisfies T009, T010.
 - [x] T014 [US1] Implement the scoring orchestrator in `src/jobhunter/scoring/run.py`: for each `state='new'` job, run filters → on fail: `state=filtered_out`+`reason`; on pass: `score`+`breakdown`+`matched_skills`+`state=scored`; persist via the store; build a `ScoreRunSummary(filtered_out, scored)`; honor `--dry-run` (no writes) — depends on T005, T012, T013; satisfies T011.
-- [ ] T015 [US1] Wire the `score` command (`--dry-run`) in `src/jobhunter/cli.py` to `scoring.run`; print the run summary to stdout per [contracts/cli.md](./contracts/cli.md).
-- [ ] T016 [US1] Add observability to the scoring flow (Constitution VIII): wrap the embeddings call (and its fallback path) in `obs.trace("embeddings.embed", ...)` (metadata only) in `scorer.py`; log the per-run summary line; confirm `cli.main()` routes a whole-run failure to `obs.notify_error`.
+- [x] T015 [US1] Wire the `score` command (`--dry-run`) in `src/jobhunter/cli.py` to `scoring.run`; print the run summary to stdout per [contracts/cli.md](./contracts/cli.md).
+- [x] T016 [US1] Add observability to the scoring flow (Constitution VIII): wrap the embeddings call (and its fallback path) in `obs.trace("embeddings.embed", ...)` (metadata only) in `scorer.py`; log the per-run summary line; confirm `cli.main()` routes a whole-run failure to `obs.notify_error`.
 
 **Checkpoint**: `jobhunter score` filters and scores independently (MVP).
 
@@ -78,13 +78,13 @@ description: "Task list for Job Scoring, Filtering & Alerting (M3)"
 
 ### Tests for User Story 2 (write first, confirm failing) ⚠️
 
-- [ ] T017 [P] [US2] Unit test breakdown completeness and honesty in `tests/unit/test_score_breakdown.py`: every scored job's breakdown contains all four `SoftWeights` components with `value`/`weight`/`inferred`; two fixture jobs with the same `overall` score show differing component contributions (proving the breakdown, not just the total, is meaningful).
-- [ ] T018 [P] [US2] Integration test in `tests/integration/test_score_explainability.py`: after a run, every `state=scored` row's `breakdown` JSON round-trips and is queryable directly from the store without recomputation; no row has a non-null `score` with a null `breakdown` (the data-model atomicity rule).
+- [x] T017 [P] [US2] Unit test breakdown completeness and honesty in `tests/unit/test_score_breakdown.py`: every scored job's breakdown contains all four `SoftWeights` components with `value`/`weight`/`inferred`; two fixture jobs with the same `overall` score show differing component contributions (proving the breakdown, not just the total, is meaningful).
+- [x] T018 [P] [US2] Integration test in `tests/integration/test_score_explainability.py`: after a run, every `state=scored` row's `breakdown` JSON round-trips and is queryable directly from the store without recomputation; no row has a non-null `score` with a null `breakdown` (the data-model atomicity rule).
 
 ### Implementation for User Story 2
 
-- [ ] T019 [US2] Harden `src/jobhunter/scoring/scorer.py` so `score` and `breakdown` are always written together in the same call — never one without the other — depends on T013; satisfies T017, T018.
-- [ ] T020 [US2] Add a breakdown-rendering helper (e.g. `format_breakdown`) surfaced through the `score` CLI summary so the top contributing factor is legible without a separate query (SC-004) — `src/jobhunter/scoring/scorer.py` and `src/jobhunter/cli.py`.
+- [x] T019 [US2] Harden `src/jobhunter/scoring/scorer.py` so `score` and `breakdown` are always written together in the same call — never one without the other — depends on T013; satisfies T017, T018.
+- [x] T020 [US2] Add a breakdown-rendering helper (e.g. `format_breakdown`) surfaced through the `score` CLI summary so the top contributing factor is legible without a separate query (SC-004) — `src/jobhunter/scoring/scorer.py` and `src/jobhunter/cli.py`.
 
 **Checkpoint**: Explainability is enforced and tested. US1 + US2 work together.
 
