@@ -1,55 +1,26 @@
 """T010 [P] [US1] — unit tests for `matched_skills` selection in the composite scorer.
 
-Per contracts/scoring_algorithm.md `matched_skills`: populated alongside
-`scope`, every profile skill whose *individual* embedding scores above a
-fixed similarity threshold against the job text, ordered by similarity
-descending; empty list (not null) when nothing clears the threshold; falls
-back to keyword-overlap when `embeddings.ollama.embed` returns `None`.
-Written first (Constitution VII) — expected to fail until T013 implements
-`jobhunter.scoring.scorer.score_job`.
+Per contracts/scoring_algorithm.md `matched_skills`: every profile skill that
+*literally appears* in the job text (`title + description`, case-insensitive,
+word-boundary aware), in profile order; empty list (not null) when nothing
+appears. This is deliberately literal, not semantic — it is the per-skill
+evidence beneath `scope`, so a skill must NOT be reported merely because its
+embedding is close to the job's overall topic (a Go role must not "match"
+Java). Unlike `scope`, `matched_skills` does not depend on the embedding
+endpoint at all.
 
-Assumptions made about the (not-yet-pinned) `embed` call shape, since T013's
-implementer should satisfy these exactly:
-  - The job-side text passed to `embed()` for both `scope` and
-    `matched_skills` is built from `job["title"]` and `job["description"]`
-    and therefore contains both verbatim somewhere in the string (order/
-    separator unspecified). Tests key on a unique marker substring placed in
-    `description` rather than an exact string match, so they don't depend on
-    the exact concatenation format.
-  - Each profile skill's individual embedding is computed by calling
-    `embed(skill)` with the bare skill string as `text` (this is the
-    simplest reading of "each profile skill's individual similarity").
-    The mock keys on an *exact* (stripped) match against each skill name.
-  - Any other text `embed()` is called with (e.g. the combined
-    `profile.skills + profile.roles` text used for `scope`'s other side) is
-    not asserted on here — the mock returns a fixed neutral default vector
-    for it so `score_job` can run to completion without raising.
-  - Vectors are 2-D for readability; only their cosine similarity matters.
-    "Clearly above threshold" is modeled as identical/near-identical vectors
-    (cosine ~0.94-1.0); "clearly below threshold" is modeled as opposite
-    vectors (cosine -1.0), so the assertions hold for any reasonable fixed
-    threshold the implementation picks (whether applied to the raw [-1, 1]
-    cosine or the [0, 1]-rescaled form used for `scope`).
+`score_job` still calls `embeddings.ollama.embed` for the `scope` component, so
+these tests patch it with a fixed neutral fake purely so `score_job` runs to
+completion — the matched-skills assertions never depend on what it returns.
 """
 
 from __future__ import annotations
 
 import yaml
-import pytest
 
 from jobhunter.models.preferences import Preferences
 from jobhunter.models.profile import Profile
-
-# Import deferred until inside the tests would also work, but importing at
-# module level is the more standard pytest style here (see
-# test_embeddings_ollama.py) and makes the expected ModuleNotFoundError
-# surface immediately at collection time.
 from jobhunter.scoring.scorer import score_job
-
-# Unique token embedded in job descriptions so the mock can recognize "this
-# is the job-side text" regardless of exactly how title/description are
-# joined before being passed to `embed()`.
-_JOB_MARKER = "JOBTEXT-T010-MARKER"
 
 _DEFAULT_VECTOR = [0.1, 0.1]
 
@@ -70,75 +41,97 @@ def _make_profile(skills: list[str]) -> Profile:
 def _make_job(description: str, *, title: str = "Backend Engineer") -> dict:
     return {
         "title": title,
-        "description": f"{_JOB_MARKER} {description}",
+        "description": description,
         "company": "Acme Corp",
         "salary": "40 LPA",
     }
 
 
-def _make_fake_embed(job_vector, skill_vectors: dict[str, list[float]]):
-    """Build a fake `embed(text, **kwargs)` keyed off the text content.
-
-    - exact (stripped) match against a known skill name -> that skill's vector
-    - text containing the job marker -> the job vector
-    - anything else -> a fixed neutral default vector
-    """
-
-    def fake_embed(text: str, **kwargs) -> list[float] | None:
-        stripped = text.strip()
-        if stripped in skill_vectors:
-            return skill_vectors[stripped]
-        if _JOB_MARKER in text:
-            return job_vector
-        return _DEFAULT_VECTOR
-
-    return fake_embed
+def _fixed_embed(text: str, **kwargs) -> list[float]:
+    """Neutral stand-in for `scope`'s embedding — matched_skills ignores it."""
+    return _DEFAULT_VECTOR
 
 
-def _make_none_embed():
-    def fake_embed(text: str, **kwargs) -> list[float] | None:
-        return None
-
-    return fake_embed
-
-
-def test_matched_skills_ordered_by_similarity_descending(monkeypatch, fixtures_dir):
-    profile = _make_profile(["Python", "Excel", "Kubernetes"])
+def test_matched_skills_are_the_literal_hits_in_profile_order(monkeypatch, fixtures_dir):
+    monkeypatch.setattr("jobhunter.embeddings.ollama.embed", _fixed_embed)
+    profile = _make_profile(["Python", "AWS", "Excel"])
     prefs = _load_prefs(fixtures_dir)
-    job = _make_job("Series A startup building a payments platform.")
-
-    job_vector = [1.0, 0.0]
-    skill_vectors = {
-        "Python": [1.0, 0.0],  # identical to job vector -> cosine 1.0
-        "Kubernetes": [0.94, 0.34],  # near-identical -> cosine ~0.94
-        "Excel": [-1.0, 0.0],  # opposite -> cosine -1.0, clearly excluded
-    }
-    monkeypatch.setattr(
-        "jobhunter.embeddings.ollama.embed",
-        _make_fake_embed(job_vector, skill_vectors),
+    # "Python" and "AWS" appear in the text; "Excel" never does.
+    job = _make_job(
+        "We use Python extensively and deploy everything on AWS. "
+        "No spreadsheet tools are involved in this role."
     )
 
     result = score_job(job, profile, prefs)
 
-    assert result.matched_skills == ["Python", "Kubernetes"]
+    # Literal hits, kept in profile order (not similarity order).
+    assert result.matched_skills == ["Python", "AWS"]
 
 
-def test_matched_skills_empty_list_when_nothing_clears_threshold(monkeypatch, fixtures_dir):
+def test_matched_skills_excludes_semantically_related_but_absent_skill(monkeypatch, fixtures_dir):
+    """A Go role must not "match" Java just because both are backend software."""
+    monkeypatch.setattr("jobhunter.embeddings.ollama.embed", _fixed_embed)
+    profile = _make_profile(["Go", "PostgreSQL", "Java"])
+    prefs = _load_prefs(fixtures_dir)
+    job = _make_job(
+        "Backend Developer (Go). Solid Go fundamentals, REST APIs, and "
+        "PostgreSQL schema design. No JVM stack here.",
+        title="Backend Developer (Go)",
+    )
+
+    result = score_job(job, profile, prefs)
+
+    assert "Go" in result.matched_skills
+    assert "PostgreSQL" in result.matched_skills
+    # "Java" is nowhere in the posting — must not appear despite being backend-ish.
+    assert "Java" not in result.matched_skills
+
+
+def test_matched_skills_word_boundary_avoids_substring_false_positives(monkeypatch, fixtures_dir):
+    """"Go" must match the token "Go" but not "Google"."""
+    monkeypatch.setattr("jobhunter.embeddings.ollama.embed", _fixed_embed)
+    prefs = _load_prefs(fixtures_dir)
+
+    # "Go" appears only inside "Google" — must NOT match.
+    profile = _make_profile(["Go"])
+    job = _make_job("We are a Google Cloud shop building data pipelines.")
+    assert score_job(job, profile, prefs).matched_skills == []
+
+    # "Go" as a standalone token — must match.
+    job2 = _make_job("Strong Go and gRPC experience required.")
+    assert score_job(job2, profile, prefs).matched_skills == ["Go"]
+
+
+def test_matched_skills_matches_punctuated_and_multiword_skills(monkeypatch, fixtures_dir):
+    monkeypatch.setattr("jobhunter.embeddings.ollama.embed", _fixed_embed)
+    profile = _make_profile(["C++", "Node.js", "Distributed Systems"])
+    prefs = _load_prefs(fixtures_dir)
+    job = _make_job(
+        "Work across C++ services and Node.js gateways on our "
+        "distributed systems platform."
+    )
+
+    result = score_job(job, profile, prefs)
+
+    assert result.matched_skills == ["C++", "Node.js", "Distributed Systems"]
+
+
+def test_matched_skills_is_case_insensitive(monkeypatch, fixtures_dir):
+    monkeypatch.setattr("jobhunter.embeddings.ollama.embed", _fixed_embed)
+    profile = _make_profile(["Kubernetes", "Kafka"])
+    prefs = _load_prefs(fixtures_dir)
+    job = _make_job("Deploys run on KUBERNETES; events flow through kafka.")
+
+    result = score_job(job, profile, prefs)
+
+    assert result.matched_skills == ["Kubernetes", "Kafka"]
+
+
+def test_matched_skills_empty_list_when_nothing_appears(monkeypatch, fixtures_dir):
+    monkeypatch.setattr("jobhunter.embeddings.ollama.embed", _fixed_embed)
     profile = _make_profile(["Python", "Excel", "Kubernetes"])
     prefs = _load_prefs(fixtures_dir)
-    job = _make_job("Series A startup building a payments platform.")
-
-    job_vector = [1.0, 0.0]
-    skill_vectors = {
-        # All skills point opposite the job vector -> cosine -1.0 for every one.
-        "Python": [-1.0, 0.0],
-        "Kubernetes": [-1.0, 0.0],
-        "Excel": [-1.0, 0.0],
-    }
-    monkeypatch.setattr(
-        "jobhunter.embeddings.ollama.embed",
-        _make_fake_embed(job_vector, skill_vectors),
-    )
+    job = _make_job("A fully non-technical customer success role.")
 
     result = score_job(job, profile, prefs)
 
@@ -146,51 +139,13 @@ def test_matched_skills_empty_list_when_nothing_clears_threshold(monkeypatch, fi
     assert result.matched_skills is not None
 
 
-def test_matched_skills_keyword_overlap_fallback_when_embed_unavailable(monkeypatch, fixtures_dir):
+def test_matched_skills_independent_of_embedding_availability(monkeypatch, fixtures_dir):
+    """Even when `embed` returns None (scope falls back), literal matching still works."""
+    monkeypatch.setattr("jobhunter.embeddings.ollama.embed", lambda text, **kw: None)
     profile = _make_profile(["Python", "AWS", "Excel"])
     prefs = _load_prefs(fixtures_dir)
-    # "Python" and "AWS" literally appear in the job text; "Excel" never does.
-    job = _make_job(
-        "We use Python extensively and deploy everything on AWS. "
-        "No spreadsheet tools are involved in this role.",
-        title="Backend Engineer",
-    )
-    monkeypatch.setattr("jobhunter.embeddings.ollama.embed", _make_none_embed())
+    job = _make_job("We use Python and deploy on AWS; no spreadsheets here.")
 
     result = score_job(job, profile, prefs)
 
-    assert "Python" in result.matched_skills
-    assert "AWS" in result.matched_skills
-    assert "Excel" not in result.matched_skills
-
-
-def test_score_job_does_not_raise_with_embeddings_available(monkeypatch, fixtures_dir):
-    profile = _make_profile(["Python", "Excel", "Kubernetes"])
-    prefs = _load_prefs(fixtures_dir)
-    job = _make_job("Series A startup building a payments platform.")
-
-    job_vector = [1.0, 0.0]
-    skill_vectors = {
-        "Python": [1.0, 0.0],
-        "Kubernetes": [0.94, 0.34],
-        "Excel": [-1.0, 0.0],
-    }
-    monkeypatch.setattr(
-        "jobhunter.embeddings.ollama.embed",
-        _make_fake_embed(job_vector, skill_vectors),
-    )
-
-    result = score_job(job, profile, prefs)
-
-    assert isinstance(result.matched_skills, list)
-
-
-def test_score_job_does_not_raise_when_embeddings_unavailable(monkeypatch, fixtures_dir):
-    profile = _make_profile(["Python", "AWS", "Excel"])
-    prefs = _load_prefs(fixtures_dir)
-    job = _make_job("We use Python extensively and deploy everything on AWS.")
-    monkeypatch.setattr("jobhunter.embeddings.ollama.embed", _make_none_embed())
-
-    result = score_job(job, profile, prefs)
-
-    assert isinstance(result.matched_skills, list)
+    assert result.matched_skills == ["Python", "AWS"]

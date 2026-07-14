@@ -79,12 +79,6 @@ _STABILITY_BY_TYPE = {"enterprise": 0.9, "midsize": 0.6, "startup": 0.3}
 _WLB_BY_TYPE = {"enterprise": 0.6, "midsize": 0.65, "startup": 0.45}
 _NEUTRAL = 0.5
 
-# A profile skill counts as "matched" when its rescaled [0, 1] similarity to
-# the job text clears this threshold. Chosen so a near-identical embedding
-# (cosine ~0.94 → ~0.97 rescaled) matches while an opposite one (cosine -1.0 →
-# 0.0 rescaled) does not.
-_MATCH_THRESHOLD = 0.6
-
 _SALARY_RE = re.compile(r"[-+]?\d*\.?\d+")
 _WORD_RE = re.compile(r"[a-z0-9]+")
 
@@ -135,11 +129,11 @@ def score_job(job: dict, profile: Profile, prefs: Preferences) -> ScoreResult:
     if job_vec is None:
         log.warning(
             "embeddings.embed: no vector returned; falling back to keyword overlap "
-            "for scope/matched_skills"
+            "for scope"
         )
 
     scope_value = _scope(job_text, profile_text, job_vec)
-    matched = _matched_skills(job_text, profile.skills, job_vec)
+    matched = _matched_skills(job_text, profile.skills)
     comp_value = _comp(job.get("salary"), prefs.hard_filters.comp_floor_lpa)
     stability_value, wlb_value = _company_signals(job)
 
@@ -242,29 +236,39 @@ def _scope(job_text: str, profile_text: str, job_vec: list[float] | None) -> flo
 # ---------------------------------------------------------------------------
 
 
-def _matched_skills(
-    job_text: str, skills: list[str], job_vec: list[float] | None
-) -> list[str]:
-    """Profile skills clearing the similarity threshold, best-first.
+def _matched_skills(job_text: str, skills: list[str]) -> list[str]:
+    """Profile skills that literally appear in the job text, in profile order.
 
-    Empty list (never ``None``) when nothing clears the threshold. Falls back
-    to keyword overlap when the job embedding is unavailable.
+    Deliberately literal, not semantic: ``matched_skills`` is per-skill
+    *evidence* that the posting actually asks for a skill, so it must never
+    fire on a skill that is merely embedding-close to the job's overall topic
+    (a Go backend role must not "match" Java just because both are backend
+    software). Aggregate semantic fit lives in ``scope``, not here. Matching is
+    word-boundary aware so a short skill like "Go" matches the token "Go" but
+    not "Google". Empty list (never ``None``) when nothing appears — an empty
+    match is itself informative and distinct from "not yet computed".
     """
-    if job_vec is None:
-        job_lower = job_text.lower()
-        return [skill for skill in skills if skill.lower() in job_lower]
+    job_lower = job_text.lower()
+    return [skill for skill in skills if _skill_present(skill.lower(), job_lower)]
 
-    scored: list[tuple[float, str]] = []
-    for skill in skills:
-        skill_vec = ollama.embed(skill)
-        if skill_vec is None:
-            continue
-        similarity = _rescale(_cosine(job_vec, skill_vec))
-        if similarity >= _MATCH_THRESHOLD:
-            scored.append((similarity, skill))
 
-    scored.sort(key=lambda pair: pair[0], reverse=True)
-    return [skill for _, skill in scored]
+def _skill_present(skill: str, text: str) -> bool:
+    """True when ``skill`` occurs as a whole token/phrase in ``text`` (both lowercased).
+
+    Anchors a word boundary only on an alphanumeric *edge* of the skill, so a
+    punctuated skill whose edge isn't a word character still matches: "c++"
+    (trailing ``+``) and ".net" (leading ``.``) would otherwise never satisfy a
+    naive ``\\b...\\b``. Multi-word skills ("distributed systems") match as the
+    exact phrase.
+    """
+    if not skill:
+        return False
+    pattern = re.escape(skill)
+    if skill[0].isalnum():
+        pattern = r"\b" + pattern
+    if skill[-1].isalnum():
+        pattern = pattern + r"\b"
+    return re.search(pattern, text) is not None
 
 
 # ---------------------------------------------------------------------------

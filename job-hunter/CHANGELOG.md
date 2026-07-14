@@ -17,8 +17,8 @@ story. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 - **US1 (MVP, complete)** — Landed the scoring engine: the hard-filter gate
   (`prefs.yaml` locations / work modes / company types / comp floor / seniority
   floor, with missing data treated as pass-through), the composite scorer
-  (`comp`/`stability`/`work_life_balance`/`scope` components + matched skills,
-  with a keyword-overlap fallback when embeddings are unavailable), and the
+  (`comp`/`stability`/`work_life_balance`/`scope` components, with a
+  keyword-overlap fallback when embeddings are unavailable), and the
   `filter → score → persist` orchestrator (filtered jobs → `state=filtered_out`
   with a reason; survivors → `state=scored` with `score`/`breakdown`/
   `matched_skills` written atomically; `dry_run` reports counts but writes
@@ -26,6 +26,14 @@ story. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   `filtered_out`/`scored`/`alerted`/`reranked` run summary; the embeddings call
   is traced (metadata only) with the keyword-overlap fallback logged, and a
   whole-run failure fires the existing ntfy error signal.
+- **Fixed** — `matched_skills` was scoring each profile skill's *embedding*
+  against the job text, which put every skill in a razor-thin similarity band
+  regardless of relevance (e.g. a Go-only posting "matched" Java, Cassandra,
+  and Snowflake purely because they're all embedding-close to "backend
+  software"). `matched_skills` now requires a literal, word-boundary-aware hit
+  in the job's title/description — the per-skill evidence beneath `scope`, not
+  a second semantic signal — so it no longer depends on the embeddings
+  endpoint at all. `scope`'s aggregate embedding similarity is unchanged.
 - **US2 (complete)** — Hardened explainability: `score` and `breakdown` are
   always written together (never one without the other), and the CLI summary
   now surfaces the top-scoring job's title plus its top contributing factor

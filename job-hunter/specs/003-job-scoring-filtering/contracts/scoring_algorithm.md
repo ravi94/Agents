@@ -48,11 +48,20 @@ overall = Σ (component[name].value * soft_weights[name])   for name in
 
 ## `matched_skills`
 
-Populated alongside `scope`: every profile skill whose individual embedding
-scores above a fixed similarity threshold against the job text, ordered by
-similarity descending. Empty list (not null) when no skill clears the
-threshold — an empty match is itself informative and distinct from "not yet
-computed".
+Every profile skill that **literally appears** in the job text (`title +
+description`, case-insensitive, word-boundary aware), in profile order. This is
+per-skill *evidence* that the posting actually asks for a skill, so it is
+deliberately literal rather than semantic: a skill must not be reported as
+matched merely because its embedding is close to the job's overall topic (a Go
+backend role must not "match" Java). Aggregate semantic fit is captured by
+`scope`; `matched_skills` is the concrete, auditable evidence beneath it.
+
+Word-boundary matching ensures a short skill like `Go` matches the token `Go`
+but not `Google`; punctuated skills (`C++`, `.NET`, `Node.js`) and multi-word
+skills (`Distributed Systems`) match as whole tokens/phrases. Empty list (not
+null) when no profile skill appears — an empty match is itself informative and
+distinct from "not yet computed". Unlike `scope`, this does **not** depend on
+the embedding endpoint being available.
 
 ## Determinism & idempotency
 
