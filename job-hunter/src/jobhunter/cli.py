@@ -212,6 +212,56 @@ def _score_handler(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_handler(args: argparse.Namespace) -> int:
+    """Run the whole pipeline end to end: discover then score (M4, US1)."""
+    from pydantic import ValidationError
+
+    from jobhunter import config, obs
+    from jobhunter.llm.claude_cli import ClaudeCLIProvider
+    from jobhunter.models.preferences import load_preferences
+    from jobhunter.models.profile import load_profile
+    from jobhunter.pipeline.run import format_pipeline_summary, run_pipeline
+    from jobhunter.sources.adzuna import AdzunaSource
+    from jobhunter.sources.jsearch import JSearchSource
+
+    profile_path = config.profile_path()
+    if not profile_path.exists():
+        raise CommandError(f"{profile_path} not found — run 'jobhunter profile <resume.pdf>' first")
+    prefs_path = config.prefs_path()
+    if not prefs_path.exists():
+        raise CommandError(f"{prefs_path} not found — run 'jobhunter prefs init' first")
+
+    try:
+        profile = load_profile(profile_path)
+    except (ValidationError, ValueError) as exc:
+        raise CommandError(f"invalid {profile_path}: {exc}") from exc
+    try:
+        prefs = load_preferences(prefs_path)
+    except ValidationError as exc:
+        raise CommandError(f"invalid {prefs_path}: {_format_validation_error(exc)}") from exc
+
+    # Registration = one factory entry per source (FR-002); same registry as
+    # `discover`. Scoring is unaffected by --source (it scores whatever is new).
+    source_factories = {"jsearch": JSearchSource, "adzuna": AdzunaSource}
+    selected_names = args.source or list(source_factories)
+    unknown = [name for name in selected_names if name not in source_factories]
+    if unknown:
+        raise CommandError(f"unknown source(s): {', '.join(unknown)}")
+    sources = [source_factories[name]() for name in selected_names]
+
+    # --rerank is a strict opt-in addition: the pipeline never calls a
+    # text-generation LLM otherwise, so the provider is built only when set
+    # (mirrors `_score_handler`).
+    provider = ClaudeCLIProvider() if args.rerank else None
+    with obs.trace("pipeline.run"):
+        summary = run_pipeline(
+            sources, profile, prefs, dry_run=args.dry_run, rerank=args.rerank, provider=provider
+        )
+
+    print(format_pipeline_summary(summary))
+    return 0
+
+
 def _db_init_handler(_args: argparse.Namespace) -> int:
     """Create the durable SQLite job store if absent, idempotently (US3)."""
     from jobhunter import obs
@@ -293,6 +343,33 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     p_score.set_defaults(func=_score_handler)
+
+    # run [--source NAME]... [--dry-run] [--rerank]  (M4 US1 -> T010)
+    p_run = subparsers.add_parser(
+        "run",
+        help="Run the whole pipeline: discover then score, under one run id.",
+    )
+    p_run.add_argument(
+        "--source",
+        action="append",
+        metavar="NAME",
+        help="Restrict discovery to this source (repeatable). Default: all configured sources.",
+    )
+    p_run.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Rehearse the full pipeline: compute counts but write nothing and send no alert.",
+    )
+    p_run.add_argument(
+        "--rerank",
+        action="store_true",
+        help=(
+            "After scoring, send the top ~25 scored survivors through one "
+            "bounded LLM call for a qualitative fit reason. Omitted by "
+            "default — the pipeline never calls an LLM otherwise."
+        ),
+    )
+    p_run.set_defaults(func=_run_handler)
 
     # db init  (US3 -> T025)
     p_db = subparsers.add_parser("db", help="Manage the SQLite job store (jobs.db).")
