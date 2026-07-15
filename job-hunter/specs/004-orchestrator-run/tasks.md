@@ -126,9 +126,9 @@ description: "Task list for End-to-End Pipeline Orchestrator (M4)"
 
 **Purpose**: Validation and finishing touches spanning stories.
 
-- [ ] T021 [P] Update `README.md`: the `jobhunter run` command and its `--source`/`--dry-run`/`--rerank` flags, noting it composes `discover` + `score` with no schema change and no scheduler (manual trigger only). Keep the run/setup steps current.
-- [ ] T022 [P] Add CLI error/exit-code tests for `run` in `tests/unit/test_cli_run.py`: missing profile/prefs errors non-zero; an unknown `--source` errors; a clean no-op run (nothing to discover, nothing new to score) exits `0` (per [contracts/cli.md](./contracts/cli.md)).
-- [ ] T023 Run the [quickstart.md](./quickstart.md) validation end-to-end (fake sources; Ollama and `--rerank` both optional) and confirm SC-001…SC-007 are met; fix any gaps.
+- [X] T021 [P] Update `README.md`: the `jobhunter run` command and its `--source`/`--dry-run`/`--rerank` flags, noting it composes `discover` + `score` with no schema change and no scheduler (manual trigger only). Keep the run/setup steps current.
+- [X] T022 [P] Add CLI error/exit-code tests for `run` in `tests/unit/test_cli_run.py`: missing profile/prefs errors non-zero; an unknown `--source` errors; a clean no-op run (nothing to discover, nothing new to score) exits `0` (per [contracts/cli.md](./contracts/cli.md)).
+- [X] T023 Run the [quickstart.md](./quickstart.md) validation end-to-end (fake sources; Ollama and `--rerank` both optional) and confirm SC-001…SC-007 are met; fix any gaps.
 
 ---
 

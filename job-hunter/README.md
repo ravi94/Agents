@@ -6,7 +6,8 @@ discovers, normalizes, and dedups job postings from multiple sources into a
 durable SQLite store, resiliently — a source outage never fails the run
 (**M2**, complete) — and filters, composite-scores, alerts on, and optionally
 LLM-re-ranks those postings against your profile and preferences (**M3**,
-complete).
+complete). One `jobhunter run` composes discovery and scoring into the whole
+pipeline end to end, under one run id (**M4**, complete).
 
 All state lives under a local app data directory — `~/.job-hunter/` by default,
 or wherever `JOBHUNTER_HOME` points.
@@ -79,6 +80,7 @@ You can also run it as a module without the console script:
 | `jobhunter db init` | Create the SQLite job store (`jobs.db`) if absent; idempotent. Prints the path and schema version. | ✅ Implemented (US3) |
 | `jobhunter discover [--source NAME]... [--dry-run]` | Query job sources, normalize, dedup, and persist new postings into `jobs.db`. | ✅ Implemented (M2) |
 | `jobhunter score [--dry-run] [--rerank]` | Hard-filter and composite-score every `state=new` job; persist `score`/`breakdown`/`matched_skills` or `filtered_out`+`reason`; alert once on high scorers; optionally re-rank the top survivors with a qualitative LLM pass. | ✅ Implemented (M3, all user stories) |
+| `jobhunter run [--source NAME]... [--dry-run] [--rerank]` | Run the whole pipeline in one command: `discover` then `score`, under one run id, ending with one combined summary. Composes the two stages — no new schema, no scheduler (manual trigger only). | ✅ Implemented (M4, all user stories) |
 
 #### Building your profile
 
@@ -235,6 +237,43 @@ export JOBHUNTER_HOME="$(pwd)/data"
   prerequisite as `jobhunter profile`). A re-rank failure or timeout never
   affects already-persisted scores/alerts — the run still exits `0` and only
   the qualitative reason is absent.
+
+#### Running the whole pipeline
+
+`jobhunter run` composes the two stages into one command: it runs `discover`
+(fetch → normalize → dedup → persist) and then `score` (filter → score →
+persist → alert) back to back, under one shared run id, ending with one
+combined summary. It adds no new schema and no scheduler — it is a manual
+trigger only, with the same `profile.json` + `prefs.yaml` preconditions as
+`discover`/`score`:
+
+```bash
+export JOBHUNTER_HOME="$(pwd)/data"
+.venv/bin/jobhunter run
+# -> Pipeline run <run-id> complete.
+#      discovery: fetched: N   new: N   seen: N   skipped: N
+#        sources:
+#          jsearch  ok
+#          adzuna   ok
+#      scoring:   filtered_out: N   scored: N   alerted: 0   reranked: 0
+```
+
+- `--source NAME` — restrict discovery to the named source(s) (`jsearch`,
+  `adzuna`), repeatable; default is all configured sources. Mirrors `discover
+  --source`; scoring is unaffected (it scores whatever is `state=new`).
+- `--dry-run` — rehearse the full pipeline: fetch/normalize/dedup/filter/score/
+  alert are computed and the would-be counts summarized, but **nothing** is
+  written to the store and **no** notification is sent (propagated to both
+  stages). The summary header is annotated `(dry run — no writes, no alerts)`.
+- `--rerank` — same as `score --rerank`: after scoring, send the top ~25
+  survivors through one bounded Claude CLI call for a qualitative `reason`.
+  Omitted by default — the pipeline never calls an LLM otherwise.
+- A single discovery source failing is isolated (shown as `failed <reason>` in
+  the discovery block); the healthy sources' jobs still flow through to scoring
+  and the run still exits `0`. Only an unexpected error that prevents
+  completion exits non-zero and fires an ntfy error signal.
+- Idempotent across re-runs, exactly like the underlying stages: a role is
+  never rescored past `new` and never alerted twice.
 
 ### App data location
 
