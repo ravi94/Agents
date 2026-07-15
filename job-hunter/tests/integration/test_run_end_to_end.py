@@ -176,3 +176,32 @@ def test_every_source_failing_still_scores_preexisting_new_jobs(
     assert summary.scoring.alerted == 1
     assert len(notify_calls) == 1
     assert db.list_jobs_by_state("new") == []
+
+
+def test_dry_run_is_a_pure_rehearsal_but_still_reports_counts(profile, prefs, notify_calls):
+    """T019 [US4] — SC-007: `dry_run=True` leaves the store byte-for-byte
+    unchanged and sends no notification, yet the combined summary still reports
+    the counts the run *would* have produced."""
+    # A role left unscored in the store from a prior run.
+    db.init_db()
+    leftover = {**normalize_jsearch(make_jsearch_posting(company="Acme Corp")), "state": "new"}
+    db.upsert_job(leftover)
+    leftover_id = leftover["id"]
+
+    # This run's discovery would surface a *different* new role.
+    source = FakeJobSource([make_jsearch_posting(company="Northwind Systems")])
+    discovered_id = normalize_jsearch(make_jsearch_posting(company="Northwind Systems"))["id"]
+
+    summary = run_pipeline([source], profile, prefs, dry_run=True)
+
+    # Would-be counts are still reported (the whole point of a rehearsal).
+    assert summary.discovery.new == 1  # the Northwind role would be newly persisted
+    assert summary.scoring.scored == 1  # the leftover would be scored
+    assert summary.scoring.alerted == 1  # ...and would alert
+
+    # ...but nothing was written and nothing was sent.
+    assert notify_calls == []
+    assert db.get_job(leftover_id)["state"] == "new"  # not advanced to scored
+    assert db.get_job(leftover_id)["alerted_at"] is None  # not stamped
+    assert db.get_job(discovered_id) is None  # discovered role never persisted
+    assert len(db.list_jobs_by_state("new")) == 1  # only the untouched leftover

@@ -10,8 +10,10 @@ copied field by field (data-model.md "Composition rule").
 
 from __future__ import annotations
 
+import logging
+
 from jobhunter.discovery.run import RunSummary
-from jobhunter.pipeline.run import PipelineSummary
+from jobhunter.pipeline.run import PipelineSummary, format_pipeline_summary
 from jobhunter.scoring.run import ScoreRunSummary
 
 
@@ -148,3 +150,108 @@ def test_discovery_source_failure_does_not_stop_scoring(monkeypatch):
 
     assert scoring_calls == [True]  # scoring ran despite the source failure
     assert summary.discovery.source_failures == {"adzuna": "HTTP 429 rate limited"}
+
+
+def test_run_id_is_reused_from_obs_not_minted(monkeypatch):
+    """T014 [US3] — C2: `run_pipeline` mints no id. It reads
+    `obs.current_run_id()` for `PipelineSummary.run_id`, which equals both
+    nested summaries' `run_id` (both stages already reuse the same id)."""
+    from jobhunter.pipeline.run import run_pipeline
+
+    # Pin the shared correlation id at its single source of truth.
+    monkeypatch.setattr("jobhunter.pipeline.run.obs.current_run_id", lambda: "sharedid42")
+
+    def fake_discovery(sources, profile, prefs, *, dry_run=False):
+        return RunSummary(run_id="sharedid42")
+
+    def fake_scoring(profile, prefs, *, dry_run=False, rerank=False, provider=None):
+        return ScoreRunSummary(run_id="sharedid42")
+
+    monkeypatch.setattr("jobhunter.pipeline.run.run_discovery", fake_discovery)
+    monkeypatch.setattr("jobhunter.pipeline.run.run_scoring", fake_scoring)
+
+    summary = run_pipeline([], _PROFILE, _PREFS)
+
+    # The aggregate id is exactly the one obs handed out — not a fresh uuid.
+    assert summary.run_id == "sharedid42"
+    assert summary.run_id == summary.discovery.run_id == summary.scoring.run_id
+
+
+def test_emits_one_combined_summary_log_line_counts_only(monkeypatch, caplog):
+    """T015 [US3] — C6 + Constitution VIII: exactly one combined end-of-run
+    summary line carrying both stages' headline counts under the run id, and
+    logging counts/metadata only — never a job/profile/prefs payload."""
+    from jobhunter.pipeline.run import run_pipeline
+
+    def fake_discovery(sources, profile, prefs, *, dry_run=False):
+        return RunSummary(
+            fetched=42, new=18, seen=22, skipped=2,
+            source_failures={"adzuna": "HTTP 429"}, run_id="-",
+        )
+
+    def fake_scoring(profile, prefs, *, dry_run=False, rerank=False, provider=None):
+        # A payload that must NOT appear in the summary log line.
+        return ScoreRunSummary(
+            filtered_out=6, scored=12, alerted=2, reranked=0,
+            top_job_title="Secret Staff Role at Acme", run_id="-",
+        )
+
+    monkeypatch.setattr("jobhunter.pipeline.run.run_discovery", fake_discovery)
+    monkeypatch.setattr("jobhunter.pipeline.run.run_scoring", fake_scoring)
+
+    with caplog.at_level(logging.INFO, logger="jobhunter.pipeline"):
+        run_pipeline([], _PROFILE, _PREFS)
+
+    summary_lines = [
+        r.getMessage() for r in caplog.records if "run complete" in r.getMessage()
+    ]
+    assert len(summary_lines) == 1  # exactly one combined line
+    msg = summary_lines[0]
+    # both stages' headline counts are present under the run id.
+    for token in ("new=18", "seen=22", "skipped=2", "failures=1",
+                  "filtered_out=6", "scored=12", "alerted=2", "reranked=0"):
+        assert token in msg
+    # counts/metadata only — no job payload leaked.
+    assert "Secret Staff Role at Acme" not in msg
+
+
+def test_dry_run_flag_reaches_both_stages(monkeypatch):
+    """T018 [US4] — C8: `dry_run=True` propagates to both `run_discovery` and
+    `run_scoring`."""
+    from jobhunter.pipeline.run import run_pipeline
+
+    seen: dict[str, bool] = {}
+
+    def fake_discovery(sources, profile, prefs, *, dry_run=False):
+        seen["discovery"] = dry_run
+        return RunSummary(run_id="-")
+
+    def fake_scoring(profile, prefs, *, dry_run=False, rerank=False, provider=None):
+        seen["scoring"] = dry_run
+        return ScoreRunSummary(run_id="-")
+
+    monkeypatch.setattr("jobhunter.pipeline.run.run_discovery", fake_discovery)
+    monkeypatch.setattr("jobhunter.pipeline.run.run_scoring", fake_scoring)
+
+    run_pipeline([], _PROFILE, _PREFS, dry_run=True)
+
+    assert seen["discovery"] is True
+    assert seen["scoring"] is True
+
+
+def test_dry_run_render_annotates_header_normal_run_does_not():
+    """T020 [US4] — the combined summary is annotated under `dry_run` to make
+    clear the run wrote nothing and alerted no one; a normal run is not."""
+    summary = PipelineSummary(
+        run_id="r1",
+        discovery=RunSummary(fetched=1, new=1, run_id="r1"),
+        scoring=ScoreRunSummary(scored=1, run_id="r1"),
+    )
+
+    dry = format_pipeline_summary(summary, dry_run=True)
+    normal = format_pipeline_summary(summary)
+
+    assert "dry run — no writes, no alerts" in dry.splitlines()[0]
+    assert "dry run" not in normal
+    # the counts block is identical either way — only the header differs.
+    assert dry.splitlines()[1:] == normal.splitlines()[1:]

@@ -91,13 +91,13 @@ description: "Task list for End-to-End Pipeline Orchestrator (M4)"
 
 ### Tests for User Story 3 (write first, confirm failing) ⚠️
 
-- [ ] T014 [P] [US3] Unit test run-id reuse in `tests/unit/test_pipeline_run.py`: `PipelineSummary.run_id == obs.current_run_id()` and equals both nested summaries' `run_id`; `run_pipeline` mints no new id ([contracts/pipeline.md](./contracts/pipeline.md) C2).
-- [ ] T015 [P] [US3] Unit test the combined end-of-run summary log line in `tests/unit/test_pipeline_run.py`: `run_pipeline` emits one summary log line carrying both stages' headline counts under the run id, and logs **counts/metadata only** — never resume/prefs/profile/job payload (C6, Constitution VIII).
-- [ ] T016 [P] [US3] Unit test whole-run-failure notification at the CLI seam in `tests/unit/test_cli_run.py`: a `run` that raises (e.g. missing profile/prefs, or a stage error) routes to `obs.notify_error` and exits non-zero, and `run_pipeline` itself raises rather than self-notifying (C7).
+- [X] T014 [P] [US3] Unit test run-id reuse in `tests/unit/test_pipeline_run.py`: `PipelineSummary.run_id == obs.current_run_id()` and equals both nested summaries' `run_id`; `run_pipeline` mints no new id ([contracts/pipeline.md](./contracts/pipeline.md) C2).
+- [X] T015 [P] [US3] Unit test the combined end-of-run summary log line in `tests/unit/test_pipeline_run.py`: `run_pipeline` emits one summary log line carrying both stages' headline counts under the run id, and logs **counts/metadata only** — never resume/prefs/profile/job payload (C6, Constitution VIII).
+- [X] T016 [P] [US3] Unit test whole-run-failure notification at the CLI seam in `tests/unit/test_cli_run.py`: a `run` that raises (e.g. missing profile/prefs, or a stage error) routes to `obs.notify_error` and exits non-zero, and `run_pipeline` itself raises rather than self-notifying (C7).
 
 ### Implementation for User Story 3
 
-- [ ] T017 [US3] Add the combined end-of-run summary log line to `src/jobhunter/pipeline/run.py` via `obs.get_logger` (counts/metadata only) — satisfies T015. Confirm (no new code expected) that the shared run id and per-call tracing are inherited: `cli.main()` already mints the id via `obs.configure_run_logging()` and both stages already trace their own calls — satisfies T014.
+- [X] T017 [US3] Add the combined end-of-run summary log line to `src/jobhunter/pipeline/run.py` via `obs.get_logger` (counts/metadata only) — satisfies T015. Confirm (no new code expected) that the shared run id and per-call tracing are inherited: `cli.main()` already mints the id via `obs.configure_run_logging()` and both stages already trace their own calls — satisfies T014.
 
 **Checkpoint**: The run is observable end to end and fails loudly; US1–US3 all functional.
 
@@ -111,12 +111,12 @@ description: "Task list for End-to-End Pipeline Orchestrator (M4)"
 
 ### Tests for User Story 4 (write first, confirm failing) ⚠️
 
-- [ ] T018 [P] [US4] Unit test dry-run propagation in `tests/unit/test_pipeline_run.py`: `dry_run=True` reaches **both** `run_discovery` and `run_scoring` ([contracts/pipeline.md](./contracts/pipeline.md) C8).
-- [ ] T019 [P] [US4] Integration test rehearsal purity in `tests/integration/test_run_end_to_end.py`: `run_pipeline(dry_run=True)` over a seeded fixture store leaves it unchanged (no new jobs, no state transitions, no `alerted_at` stamps) and sends no notification, while the combined summary still reports the would-be counts (SC-007).
+- [X] T018 [P] [US4] Unit test dry-run propagation in `tests/unit/test_pipeline_run.py`: `dry_run=True` reaches **both** `run_discovery` and `run_scoring` ([contracts/pipeline.md](./contracts/pipeline.md) C8).
+- [X] T019 [P] [US4] Integration test rehearsal purity in `tests/integration/test_run_end_to_end.py`: `run_pipeline(dry_run=True)` over a seeded fixture store leaves it unchanged (no new jobs, no state transitions, no `alerted_at` stamps) and sends no notification, while the combined summary still reports the would-be counts (SC-007).
 
 ### Implementation for User Story 4
 
-- [ ] T020 [US4] Add a dry-run annotation to the combined-summary rendering (e.g. a `(dry run — no writes, no alerts)` note) in `src/jobhunter/pipeline/run.py` and/or `src/jobhunter/cli.py` per [contracts/cli.md](./contracts/cli.md) — depends on T009, T010; satisfies the rehearsal UX in T019.
+- [X] T020 [US4] Add a dry-run annotation to the combined-summary rendering (e.g. a `(dry run — no writes, no alerts)` note) in `src/jobhunter/pipeline/run.py` and/or `src/jobhunter/cli.py` per [contracts/cli.md](./contracts/cli.md) — depends on T009, T010; satisfies the rehearsal UX in T019.
 
 **Checkpoint**: All four user stories independently functional; `--dry-run` is a safe rehearsal.
 

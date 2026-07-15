@@ -258,7 +258,7 @@ def _run_handler(args: argparse.Namespace) -> int:
             sources, profile, prefs, dry_run=args.dry_run, rerank=args.rerank, provider=provider
         )
 
-    print(format_pipeline_summary(summary))
+    print(format_pipeline_summary(summary, dry_run=args.dry_run))
     return 0
 
 

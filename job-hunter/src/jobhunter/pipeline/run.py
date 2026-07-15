@@ -68,22 +68,48 @@ def run_pipeline(
         profile, prefs, dry_run=dry_run, rerank=rerank, provider=provider
     )
     # Composed, not recomputed: the two stage summaries are held as-is (C5).
-    return PipelineSummary(
+    summary = PipelineSummary(
         run_id=obs.current_run_id(), discovery=discovery, scoring=scoring
     )
 
+    # One combined end-of-run summary line covering both stages' headline
+    # counts, in addition to the per-stage lines the stages already log (C6).
+    # Counts/metadata only — never a resume, prefs, profile, or job payload
+    # (Constitution VIII).
+    obs.get_logger("pipeline").info(
+        "pipeline: run complete run_id=%s "
+        "discovery(fetched=%d new=%d seen=%d skipped=%d failures=%d) "
+        "scoring(filtered_out=%d scored=%d alerted=%d reranked=%d)",
+        summary.run_id,
+        discovery.fetched,
+        discovery.new,
+        discovery.seen,
+        discovery.skipped,
+        len(discovery.source_failures),
+        scoring.filtered_out,
+        scoring.scored,
+        scoring.alerted,
+        scoring.reranked,
+    )
+    return summary
 
-def format_pipeline_summary(summary: PipelineSummary) -> str:
+
+def format_pipeline_summary(summary: PipelineSummary, *, dry_run: bool = False) -> str:
     """Render one combined per-run summary block (contracts/cli.md).
 
     One block, two sub-blocks: the discovery counts (with per-source ok/failed
     breakdown) and the scoring counts (with this run's top contributor). Reads
-    the nested summaries only — adds no new count of its own.
+    the nested summaries only — adds no new count of its own. With `dry_run`,
+    the header is annotated to make clear the run wrote nothing and alerted no
+    one — the counts shown are what the run *would* have produced (SC-007).
     """
     d = summary.discovery
     s = summary.scoring
+    header = f"Pipeline run {summary.run_id} complete."
+    if dry_run:
+        header += " (dry run — no writes, no alerts)"
     lines = [
-        f"Pipeline run {summary.run_id} complete.",
+        header,
         f"  discovery: fetched: {d.fetched}   new: {d.new}   "
         f"seen: {d.seen}   skipped: {d.skipped}",
     ]
