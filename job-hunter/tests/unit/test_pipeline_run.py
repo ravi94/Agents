@@ -118,3 +118,33 @@ def test_forwards_sources_flags_and_shared_profile_prefs(monkeypatch):
     # both stages get the identical profile/prefs objects.
     assert seen["discovery"]["profile"] is _PROFILE is seen["scoring"]["profile"]
     assert seen["discovery"]["prefs"] is _PREFS is seen["scoring"]["prefs"]
+
+
+def test_discovery_source_failure_does_not_stop_scoring(monkeypatch):
+    """T011 [US2] — C3 + C4: a discovery summary carrying a `source_failures`
+    entry does not abort the run. `run_pipeline` still invokes `run_scoring`
+    and returns normally — the isolated failure is reported inside the nested
+    summary, never re-raised."""
+    from jobhunter.pipeline.run import run_pipeline
+
+    scoring_calls: list[bool] = []
+
+    def fake_discovery(sources, profile, prefs, *, dry_run=False):
+        return RunSummary(
+            new=0,
+            attempted_sources=["jsearch", "adzuna"],
+            source_failures={"adzuna": "HTTP 429 rate limited"},
+            run_id="-",
+        )
+
+    def fake_scoring(profile, prefs, *, dry_run=False, rerank=False, provider=None):
+        scoring_calls.append(True)
+        return ScoreRunSummary(run_id="-")
+
+    monkeypatch.setattr("jobhunter.pipeline.run.run_discovery", fake_discovery)
+    monkeypatch.setattr("jobhunter.pipeline.run.run_scoring", fake_scoring)
+
+    summary = run_pipeline([], _PROFILE, _PREFS)  # must not raise
+
+    assert scoring_calls == [True]  # scoring ran despite the source failure
+    assert summary.discovery.source_failures == {"adzuna": "HTTP 429 rate limited"}

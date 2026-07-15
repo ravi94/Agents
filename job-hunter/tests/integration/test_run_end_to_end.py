@@ -16,7 +16,8 @@ from __future__ import annotations
 
 import pytest
 
-from fixtures.fake_sources import FakeJobSource, make_jsearch_posting
+from fixtures.fake_sources import FailingJobSource, FakeJobSource, make_jsearch_posting
+from jobhunter.discovery.normalize import normalize_jsearch
 from jobhunter.models.preferences import Preferences
 from jobhunter.models.profile import Profile
 from jobhunter.pipeline.run import PipelineSummary, run_pipeline
@@ -128,3 +129,50 @@ def test_run_pipeline_scores_preexisting_new_jobs_when_discovery_adds_none(
     assert second.scoring.scored == 0  # nothing left in state='new' to score
     assert second.scoring.alerted == 0
     assert len(notify_calls) == 1  # still just the first run's single alert
+
+
+def test_one_dead_source_isolated_healthy_source_completes_pipeline(
+    profile, prefs, notify_calls
+):
+    """T012 [US2] — a single failing source is isolated: it lands in
+    `discovery.source_failures`, the healthy source's job still flows all the
+    way through scoring, and the run returns success without raising (FR-004)."""
+    healthy = FakeJobSource([make_jsearch_posting()], name="jsearch")
+    dead = FailingJobSource(name="adzuna", reason="HTTP 429 rate limited")
+
+    summary = run_pipeline([healthy, dead], profile, prefs)
+
+    # The dead source is recorded, not raised.
+    assert summary.discovery.source_failures == {"adzuna": "HTTP 429 rate limited"}
+    assert "jsearch" in summary.discovery.attempted_sources
+    # The healthy source's job completed the full pipeline through scoring.
+    assert summary.discovery.new == 1
+    assert summary.scoring.scored == 1
+    assert summary.scoring.alerted == 1
+    assert len(notify_calls) == 1
+
+
+def test_every_source_failing_still_scores_preexisting_new_jobs(
+    profile, prefs, notify_calls
+):
+    """T012 [US2] — even when *every* discovery source fails (zero new jobs),
+    scoring still runs over pre-existing `state='new'` jobs and the run
+    succeeds (C4)."""
+    # A role left over from a prior run, sitting unscored in the store.
+    db.init_db()
+    leftover = {**normalize_jsearch(make_jsearch_posting()), "state": "new"}
+    db.upsert_job(leftover)
+
+    dead_a = FailingJobSource(name="jsearch", reason="auth failed")
+    dead_b = FailingJobSource(name="adzuna", reason="HTTP 500")
+
+    summary = run_pipeline([dead_a, dead_b], profile, prefs)
+
+    # Discovery surfaced nothing new — both sources failed, both recorded.
+    assert summary.discovery.new == 0
+    assert set(summary.discovery.source_failures) == {"jsearch", "adzuna"}
+    # ...yet the pre-existing new job was still scored and alerted.
+    assert summary.scoring.scored == 1
+    assert summary.scoring.alerted == 1
+    assert len(notify_calls) == 1
+    assert db.list_jobs_by_state("new") == []

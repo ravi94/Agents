@@ -72,12 +72,12 @@ description: "Task list for End-to-End Pipeline Orchestrator (M4)"
 
 ### Tests for User Story 2 (write first, confirm failing) ⚠️
 
-- [ ] T011 [P] [US2] Unit test failure-isolation propagation in `tests/unit/test_pipeline_run.py`: given `run_discovery` returns a summary carrying a `source_failures` entry, `run_pipeline` still invokes `run_scoring` and returns normally without raising ([contracts/pipeline.md](./contracts/pipeline.md) C3, C4).
-- [ ] T012 [P] [US2] Integration test the partial-result path in `tests/integration/test_run_end_to_end.py`: two fake sources, one raising — the healthy source's jobs complete the full pipeline through scoring, the failure appears in `discovery.source_failures`, and the run returns success; every source failing still runs scoring over pre-existing `state='new'` jobs.
+- [X] T011 [P] [US2] Unit test failure-isolation propagation in `tests/unit/test_pipeline_run.py`: given `run_discovery` returns a summary carrying a `source_failures` entry, `run_pipeline` still invokes `run_scoring` and returns normally without raising ([contracts/pipeline.md](./contracts/pipeline.md) C3, C4).
+- [X] T012 [P] [US2] Integration test the partial-result path in `tests/integration/test_run_end_to_end.py`: two fake sources, one raising — the healthy source's jobs complete the full pipeline through scoring, the failure appears in `discovery.source_failures`, and the run returns success; every source failing still runs scoring over pre-existing `state='new'` jobs.
 
 ### Implementation for User Story 2
 
-- [ ] T013 [US2] Ensure `run_pipeline` calls `run_discovery` once with the full source list and does **not** wrap it in a try/except (or per-source loop) that would defeat the stage's inherited per-source isolation — a guard + comment in `src/jobhunter/pipeline/run.py` — satisfies T011.
+- [X] T013 [US2] Ensure `run_pipeline` calls `run_discovery` once with the full source list and does **not** wrap it in a try/except (or per-source loop) that would defeat the stage's inherited per-source isolation — a guard + comment in `src/jobhunter/pipeline/run.py` — satisfies T011.
 
 **Checkpoint**: Partial results survive a dead source; US1 + US2 work together.
 
